@@ -14,13 +14,13 @@ web3.eth.transactionConfirmationBlocks = 1;
 web3.eth.defaultGasPrice = 1;
 web3.eth.defaultGas = 6721975;
 
-let contracts = JSON.parse(fs.readFileSync("MyContract.json"))["contracts"]
-let cMyContract = contracts["MyContract.sol:MyContract"]
-let MyContract = web3.eth.Contract(JSON.parse(cMyContract.abi));
-MyContract.options.data = "0x" + cMyContract.bin;
+let contracts = JSON.parse(fs.readFileSync("Blackjack.json"))["contracts"]
+let cBlackjack = contracts["Blackjack.sol:Blackjack"]
+let Blackjack = web3.eth.Contract(JSON.parse(cBlackjack.abi));
+Blackjack.options.data = "0x" + cBlackjack.bin;
 
 let acc = [];
-let privateKeys = ["0xe6974be75995c317b182ff6e7b33058e7ba3328354305040a075d544db240886", "0x5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e","0x2d85d928177456a12b6564864920e5ff672b262496477b7406659a3d418e5a2c","0xe66d847b96768a175b4db00d095fbb38ba5b4e7992d86797394a2a4ebe710bd2"];
+let privateKeys = ["0xe6974be75995c317b182ff6e7b33058e7ba3328354305040a075d544db240886", "0x5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e","0x2d85d928177456a12b6564864920e5ff672b262496477b7406659a3d418e5a2c","0xe66d847b96768a175b4db00d095fbb38ba5b4e7992d86797394a2a4ebe710bd2","0xff725e440c2f6b4682f203fa38e75ae0ad5d37aaa5e5e23139a77f819aaef926"];
 
 for(let key of privateKeys) {
 	acc.push(web3.eth.accounts.privateKeyToAccount(key));
@@ -31,6 +31,7 @@ const ownerKey = acc[0].address;
 const client1Key = acc[1].address;
 const client2Key = acc[2].address;
 const client3Key = acc[3].address;
+const client4Key = acc[4].address;
 
 console.time("Time taken");
 
@@ -53,7 +54,13 @@ makeContract().then((contract) => {
 			return hit(contract, client1Key);
 		})
 		.then(() => {
+			return contract.methods.stand().send({from: client1Key});
+		})
+		.then(() => {
 			return hit(contract, client2Key)
+		})
+		.then(() => {
+			return contract.methods.stand().send({from: client2Key});
 		})
 		.then(() => {
 			return contract.methods.finalRandProcess().send({from: ownerKey})
@@ -63,6 +70,9 @@ makeContract().then((contract) => {
 		})
 		.then(() => {
 			return contract.methods.prepare().send({from: ownerKey});
+		})
+		.then(() => {
+			return withdraw(contract);
 		})
 		.then(() => {
 			return contract.methods.showCards().call({from: ownerKey})
@@ -75,7 +85,7 @@ makeContract().then((contract) => {
 });
 
 function makeContract() {
-	return MyContract
+	return Blackjack
 	.deploy({
 		//"arguments": [ownerKey],
 	})
@@ -87,14 +97,32 @@ function makeContract() {
 function joinGame(contract) {
 	return Promise.resolve()
 	.then(() => {
-		return contract.methods.joinGame().send({from: client1Key, value: 1 * Math.pow(10,18)});
+		return contract.methods.joinGame().send({from: client1Key, value: 2 * Math.pow(10,18)});
 	})
 	.then(() => {
-		return contract.methods.joinGame().send({from: client2Key, value: 1 * Math.pow(10,18)}); 
+		return contract.methods.bet(Math.pow(10,18).toString(10)).send({from: client1Key});
+	})
+	.then(() => {
+		return contract.methods.joinGame().send({from: client2Key, value: 2 * Math.pow(10,18)}); 
+	})
+	.then(() => {
+		return contract.methods.bet(Math.pow(10,18).toString(10)).send({from: client2Key});
 	})
 	.then(() => {
 		return contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
 	})	
+}
+function withdraw(contract) {
+	return Promise.resolve()
+	.then(() => {
+		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
+	})
+	.then(() => {
+		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: client1Key});
+	})
+	.then(() => {
+		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: client2Key});
+	})
 }
 
 function createRandom(contract) {

@@ -3,14 +3,11 @@ pragma solidity 0.5.10;
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (-) Test all basic functionality                     |*|
-|*| (-) Implment timers                                  |*|
-|*| (-) Have user computers send hashs                   |*|
+|*| (-) Implment timers to let anyone call               |*|
 |*| (-) Move some functions from dealer to automatic     |*|
 |*| (-) Change if statements to require                  |*|
-|*| (-) Create purge function?                           |*|
 |*| (-) Delete temp functions                            |*|
 |*| (-) Add tons of error trapping                       |*|
-|*| (-) Add minimum requirements for rand num inputs     |*|
 |*| (-) Fix function and variable state mutabilities     |*|
 |*| (-) Clean up code and code order                     |*|
 |*| (-) Force players to call functions with incentives  |*|
@@ -19,11 +16,13 @@ pragma solidity 0.5.10;
 |*|     portion of it in order to have individual        |*|
 |*|     transaction methods                              |*|
 |*| (-) Run hit phase in parallel                        |*|
+|*| (-) Add deposit for players                          |*|
+|*| (-) Add insurance option                             |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
 
-contract MyContract{
+contract Blackjack{
 
     enum GameState {Accepting, ProcessingRandom, VerifyingRandom, PreparingGame, InProgress, Finished}
     GameState state;
@@ -34,7 +33,6 @@ contract MyContract{
         uint256 bet;
         uint8[] cards;
         uint8[] splitCards;
-        uint8 betMultiplier;
         bool split;
         uint256 hashNum;
         uint256 randNum;
@@ -62,7 +60,7 @@ contract MyContract{
         house = msg.sender;
         players[house].wallet = msg.sender;
         state = GameState.Finished;
-        playerCount = 0;
+        //playerCount = 0;
     }
 
     modifier isAccepting {
@@ -117,18 +115,11 @@ contract MyContract{
         _;
     }
 
-
-    /*struct Player {
-        uint256 bet; // Need to change in alternate function
-        uint8 betMultiplier;
-    }*/
-
-
     function newGame() public onlyDealer() isFinished(){
         players[house].valid = false; //Might be able to remove this
         players[house].hashNum = 0; //Might be able to remove this
         players[house].randNum = 0; //Check this
-        for (uint8 i = 1; i <= playerCount; i++) {
+        for (uint8 i = 1; i <= playerCount; i++) { //Reset everything except user address and balances
             delete players[playerNums[i]].cards;
             delete players[playerNums[i]].splitCards;
             players[playerNums[i]].split = false;
@@ -141,6 +132,7 @@ contract MyContract{
             players[playerNums[i]].flexibility = 0;
             players[playerNums[i]].done = false;
         }
+        playerCount = 0;
         possibleLoss = 0;
         submitCount = 0;
         validCount = 0;
@@ -151,7 +143,7 @@ contract MyContract{
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
-        require(msg.value > 0, "Your bet was invalid.");
+        require(msg.value > 2, "Your pool must be atleast 2 Ether");
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;
@@ -162,8 +154,6 @@ contract MyContract{
         players[msg.sender].wallet = msg.sender;
         possibleLoss += msg.value;
         players[msg.sender].pool = msg.value;
-        //players[house].wallet.transfer(msg.value);
-        //players[msg.sender].betMultiplier = 0; //might be able to remove
     }
 
     function bet(uint256 _bet) public onlyPlayer() notDealer() isAccepting() {
@@ -178,7 +168,7 @@ contract MyContract{
     }
 
     function closeGame() public payable onlyDealer() isAccepting() {
-        require(players[house].pool >= possibleLoss, "You need to send enough funds to match the bets.");
+        require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
         require(playerCount >= 1, "Wait until there's atleast one other player!");
         players[house].pool += msg.value;
         state = GameState.ProcessingRandom;
@@ -206,7 +196,7 @@ contract MyContract{
         }
     }
 
-    function prepare() public onlyDealer() isPreparingGame() { //Let anyone call after some time
+    function prepare() public onlyDealer() isPreparingGame() {
         if (validCount != playerCount + 1){
             for (uint8 i = 1; i <= playerCount; i++) {
                 if (!players[playerNums[i]].valid) {
@@ -219,29 +209,34 @@ contract MyContract{
                     if (players[playerNums[i]].valid) {
                         players[house].pool -= players[playerNums[i]].bet * 2;
                         players[playerNums[i]].pool += players[playerNums[i]].bet * 3;
+                        players[playerNums[i]].bet = 0;
                     }
                 }
             }
         }
 
-        if (
+
+        if (validCount == 0 || !players[house].valid)
+        {
+            state = GameState.Finished;
+        }
+        else if (
             (!players[playerNums[1]].valid || players[playerNums[1]].done) &&
             (!players[playerNums[2]].valid || players[playerNums[2]].done) &&
             (!players[playerNums[3]].valid || players[playerNums[3]].done) &&
             (!players[playerNums[4]].valid || players[playerNums[4]].done)
             ) {
             finishGame();
-        } else if (validCount >= 1 && players[house].valid) {
+        } else { //(validCount >= 1 && players[house].valid)
             globalRand = players[house].randNum;
             for(uint8 i = 1; i <= playerCount; i++) {
                 if (players[playerNums[i]].valid) {
                     globalRand ^= players[playerNums[i]].randNum;
                 }
             }
+            globalRand = uint256(keccak256(abi.encode(globalRand)));
             state = GameState.InProgress;
             deal();
-        } else {
-            state = GameState.Finished;
         }
     }
 
@@ -345,11 +340,11 @@ contract MyContract{
         }
     }
 
-    function doubleDown() public payable onlyPlayer() notDealer() isInProgress(){ //Edit to match double down betting and cardSum (9,10,11) rules
-        require(msg.value == players[msg.sender].bet, "Your bet must match your inital one.");
+    function doubleDown() public onlyPlayer() notDealer() isInProgress(){
+        require(players[msg.sender].cardSum >= 9 || players[msg.sender].cardSum <= 11, "Your card total must be a 9, 10, or 11 to double down.");
         hit();
-        players[msg.sender].bet += msg.value;
-        players[house].wallet.transfer(msg.value);
+        players[msg.sender].pool -= players[msg.sender].bet;
+        players[msg.sender].bet *= 2;
         players[msg.sender].done = true;
     }
 
@@ -360,9 +355,11 @@ contract MyContract{
             !players[msg.sender].split &&
             players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13
             ) {
+            players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
             players[msg.sender].splitCards.push(players[msg.sender].cards[1]);
             players[msg.sender].cards.length--;
             players[msg.sender].split = true;
+            players[msg.sender].cardSum /= 2;
         }
     }
 
@@ -392,22 +389,19 @@ contract MyContract{
             }
             state = GameState.ProcessingRandom;
         }
-
     }
 
     function finishGame() private {
         revealDealerCards();
         for (uint8 i = 1; i <= playerCount; i++) {
             if (players[playerNums[i]].valid){
-                addMultiplier(playerNums[i],players[playerNums[i]].cardSum);
                 if (players[playerNums[i]].split) {
-                    addMultiplier(playerNums[i],players[playerNums[i]].altCardSum);
+                    payOut(playerNums[i], players[playerNums[i]].altCardSum);
                 }
-                players[house].pool -= players[playerNums[i]].bet * players[playerNums[i]].betMultiplier;
-                players[playerNums[i]].wallet.transfer(players[playerNums[i]].bet * players[playerNums[i]].betMultiplier);
+                payOut(playerNums[i], players[playerNums[i]].cardSum);
+                players[playerNums[i]].bet = 0;
             }
         }
-        players[house].wallet.transfer(players[house].pool);
         state = GameState.Finished;
     }
 
@@ -420,25 +414,53 @@ contract MyContract{
         }
     }
 
-    function addMultiplier(address _address, uint8 _cardSum) private {
-        if (_cardSum <= 21) {
+    function payOut(address _address, uint8 _cardSum) private {
+        if (_cardSum > 21) {
+            players[house].pool += players[_address].bet;
+        }
+        else { // (_cardSum <= 21)
             if (_cardSum == players[house].cardSum)
             {
                 if (players[_address].blackjack){
                     if (players[house].blackjack) {
-                        players[_address].betMultiplier = 1;
+                        players[_address].pool += players[_address].bet;
                     } else {
-                        players[_address].betMultiplier = 3;
+                        players[house].pool -= players[_address].bet * 2;
+                        players[_address].pool += players[_address].bet * 3;
                     }
                 } else {
-                    if (!players[house].blackjack) {
-                        players[_address].betMultiplier += 1;
+                    if (players[house].blackjack) {
+                        players[house].pool += players[_address].bet;
+                    } else {
+                        players[_address].pool += players[_address].bet;
                     }
                 }
             } else if (players[house].cardSum > 21) {
-                players[_address].betMultiplier += 2;
+                players[house].pool -= players[_address].bet;
+                players[_address].pool += players[_address].bet * 2;
             } else if (_cardSum > players[house].cardSum) {
-                players[_address].betMultiplier += 2;
+                players[house].pool -= players[_address].bet;
+                players[_address].pool += players[_address].bet * 2;
+            }
+        }
+    }
+
+    function withdraw (uint256 _amount) public {
+        if (
+            !(msg.sender == house ||
+            msg.sender == playerNums[1] ||
+            msg.sender == playerNums[2] ||
+            msg.sender == playerNums[3] ||
+            msg.sender == playerNums[4]) ||
+            (state == GameState.Finished)
+            ) {
+            if (_amount <= players[msg.sender].pool) {
+                players[msg.sender].pool -= _amount;
+                players[msg.sender].wallet.transfer(_amount);
+            } else {
+                uint256 transferAmount = players[msg.sender].pool;
+                players[msg.sender].pool = 0;
+                players[msg.sender].wallet.transfer(transferAmount);
             }
         }
     }
@@ -459,10 +481,6 @@ contract MyContract{
 
     function returnCardSum() public view returns (uint8){
         return players[msg.sender].cardSum;
-    }
-
-    function returnBetMultiplier() public view returns (uint8){
-        return players[msg.sender].betMultiplier;
     }
 
     function submitHashRequest(uint256 n) public onlyPlayer() isInProgress(){
