@@ -46,9 +46,21 @@ makeContract().then((contract) => {
 		})
 		.then(() => {
 			return contract.methods.prepare().send({from: ownerKey});
-		})	
+		})
 		.then(() => {
 			return showInitialCards(contract);
+		})
+		.then(() => {
+			return split(contract, client1Key);
+		})
+		.then(() => {
+			return hit(contract, client1Key);
+		})
+		.then(() => {
+			return contract.methods.stand().send({from: client1Key});
+		})
+		.then(() => {
+			return contract.methods.transferToSplit().send({from: client1Key});
 		})
 		.then(() => {
 			return hit(contract, client1Key);
@@ -110,18 +122,24 @@ function joinGame(contract) {
 	})
 	.then(() => {
 		return contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
+	})
+	.then(() => {
+		return contract.methods.submitDeposit().send({from: client1Key, value: 10 * Math.pow(10,18)});
+	})
+	.then(() => {
+		return contract.methods.submitDeposit().send({from: client2Key, value: 10 * Math.pow(10,18)});
 	})	
 }
 function withdraw(contract) {
 	return Promise.resolve()
 	.then(() => {
-		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
 	})
 	.then(() => {
-		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: client1Key});
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
 	})
 	.then(() => {
-		return contract.methods.withdraw((10 * Math.pow(10,18)).toString(10)).send({from: client2Key});
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
 	})
 }
 
@@ -158,7 +176,15 @@ function showInitialCards(contract) {
 		.then(console.log);
 	})
 	.then(() => {
+		return contract.methods.showSplitCards().call({from: client1Key})
+		.then(console.log);
+	})
+	.then(() => {
 		return contract.methods.showCards().call({from: client2Key})
+		.then(console.log);
+	})
+	.then(() => {
+		return contract.methods.showSplitCards().call({from: client2Key})
 		.then(console.log);
 	})
 }
@@ -184,7 +210,26 @@ function hit(contract,_clientKey) {
 		return contract.methods.showCards().call({from: _clientKey})
 		.then(console.log);
 	})
+	.then(() => {
+		return contract.methods.showSplitCards().call({from: _clientKey})
+		.then(console.log);
+	})
 }
+
+function split(contract,_clientKey) {
+	return Promise.resolve()
+	.then(() => {
+		return contract.methods.split().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.showCards().call({from: _clientKey})
+		.then(console.log);
+	})
+	.then(() => {
+		return contract.methods.showSplitCards().call({from: _clientKey})
+		.then(console.log);
+	})
+} 
 /*function count(n) {
 	console.log(n++); 
 	if (n < 30){
