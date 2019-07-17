@@ -11,6 +11,8 @@ pragma solidity 0.5.10;
 |*| (|) Fix function and variable state mutabilities     |*|
 |*| (|) Clean up code and code order                     |*|
 |*| (|) Clean up require && statements                   |*|
+|*| (|) Move some require statements to modifiers        |*|
+|*| (+) Change blockNum + 5 to a more reasonable value   |*|
 |*| (x) Add insurance option                             |*|
 |*| (x) optimize deposit for users                       |*|
 |*|                                                      |*|
@@ -18,6 +20,7 @@ pragma solidity 0.5.10;
 |*|                                                      |*|
 |*| (-) = Current objectives                             |*|
 |*| (|) = Will complete with client-side program         |*|
+|*| (+) = Will complete after client-side program        |*|
 |*| (x) = might not add                                  |*|
 |*|                                                      |*|
 \*|======================================================|*/
@@ -47,12 +50,12 @@ contract Blackjack{
     }
 
     uint256 blockNum;
+    bool timerStarted;
     mapping(address => Player) public players;
     mapping(uint8 => address) public playerNums;
     uint8 playerCount;
     uint256 possibleLoss;
-    uint8 submitCount; //merge with below and add to bet function
-    uint8 validCount;
+    uint8 taskDone;
     address house;
     uint256 globalRand;
     address hitTarget;
@@ -63,7 +66,6 @@ contract Blackjack{
         house = msg.sender;
         players[house].wallet = msg.sender;
         state = GameState.Finished;
-        //playerCount = 0;
     }
 
     modifier isAccepting {
@@ -118,6 +120,60 @@ contract Blackjack{
         _;
     }
 
+    function resetValid() private {
+        players[house].valid = false;
+        for (uint8 i = 1; i <= playerCount; i++) {
+            players[playerNums[i]].valid = false;
+        }
+    }
+
+    function startTimer() public onlyDealer() isAccepting() {
+        require(!timerStarted, "You can only start the timer once.");
+        timerStarted = true;
+        blockNum = block.number;
+    }
+
+    function proceed() public {
+        require(
+            state == GameState.ProcessingRandom || state == GameState.VerifyingRandom,
+            "You can't proceed now."
+        ); //finish adding states later
+        require (block.number > blockNum + 5, "Players still have time to make a move.");
+        kick();
+        state = GameState(uint(state)+1);
+    }
+
+    function kick() private {
+        uint256 distributableMoney;
+        taskDone = playerCount + 1;
+        for (uint8 i = 1; i <= playerCount; i++) {
+            if (!players[playerNums[i]].valid) {
+                players[house].pool += players[playerNums[i]].bet;
+                distributableMoney += players[playerNums[i]].deposit;
+                players[playerNums[i]].bet = 0;
+                players[playerNums[i]].deposit = 0;
+                taskDone--;
+            }
+        }
+        for (uint8 i = 1; i <= playerCount; i++) {
+            if (players[playerNums[i]].valid) {
+                players[playerNums[i]].pool += distributableMoney / taskDone;
+            }
+        }
+        if (players[house].valid) {
+            players[house].pool += distributableMoney / taskDone;
+        } else {
+            for(uint8 i = 1; i <= playerCount; i++) {
+                if (players[playerNums[i]].valid) {
+                    players[house].pool -= players[playerNums[i]].bet * 2;
+                    players[playerNums[i]].pool += players[playerNums[i]].bet * 3 + players[playerNums[i]].deposit;
+                    players[playerNums[i]].bet = 0;
+                    players[playerNums[i]].deposit = 0;
+                }
+            }
+        }
+    }
+
     function newGame() public onlyDealer() isFinished(){
         players[house].valid = false; //Might be able to remove this
         players[house].hashNum = 0; //Might be able to remove this
@@ -137,8 +193,7 @@ contract Blackjack{
         }
         playerCount = 0;
         possibleLoss = 0;
-        submitCount = 0;
-        validCount = 0;
+        taskDone = 0;
         globalRand = 0;
         delete hitTarget;
         state = GameState.Accepting;
@@ -146,7 +201,7 @@ contract Blackjack{
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
-        require(msg.value > 2, "Your pool must be atleast 2 Ether"); //Make lower later
+        require(msg.value >= 2 ether, "Your pool must be atleast 2 Ether"); //Make money lower or dynamic later
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;
@@ -161,20 +216,34 @@ contract Blackjack{
 
     function bet(uint256 _bet) public onlyPlayer() notDealer() isAccepting() {
         require(
-            (_bet > 0) &&
+            (_bet >= 1 ether) &&
             (_bet*2 <= players[msg.sender].pool) &&
-            (_bet*2 + possibleLoss + 10 < house.balance),
+            (_bet*2 + possibleLoss + 10 ether < house.balance),
             "Your bet was invalid."
         );
-        players[msg.sender].bet = _bet;
-        players[msg.sender].pool -= players[msg.sender].bet;
+        if (players[msg.sender].bet == 0) {
+            players[msg.sender].bet = _bet;
+            players[msg.sender].pool -= players[msg.sender].bet;
+            taskDone++;
+        } else {
+            players[msg.sender].pool += players[msg.sender].bet;
+            players[msg.sender].bet = _bet;
+            players[msg.sender].pool -= players[msg.sender].bet;
+        }
+        players[msg.sender].valid = true;
     }
 
     function closeGame() public payable onlyDealer() isAccepting() {
         require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
         require(playerCount >= 1, "Wait until there's atleast one other player!");
+        require(timerStarted, "You haven't started the timer yet!");
+        require (block.number > blockNum + 5, "Players still have time to make a move.");
+        kick();
         players[house].pool += msg.value;
         state = GameState.ProcessingRandom;
+        taskDone = 0;
+        resetValid();
+        blockNum = block.number;
     }
 
     function submitDeposit() public payable onlyPlayer() notDealer() isProcessingRandom() {
@@ -186,11 +255,15 @@ contract Blackjack{
         require(msg.sender == house || players[msg.sender].deposit != 0, "You haven't made a deposit yet");
         require(_hash != 0, "You can't send a hash of 0");
         if (players[msg.sender].hashNum == 0) {
-            submitCount++;
+            taskDone++;
         }
         players[msg.sender].hashNum = _hash;
-        if (submitCount == (playerCount + 1)) {
+        players[msg.sender].valid = true;
+        if (taskDone == (playerCount + 1)) {
+            taskDone = 0;
             state = GameState.VerifyingRandom;
+            resetValid();
+            blockNum = block.number;
         }
     }
 
@@ -200,49 +273,28 @@ contract Blackjack{
             "Your hash does not match your number!"
         );
         players[msg.sender].valid = true;
-        validCount++;
+        taskDone++;
         players[msg.sender].randNum = _randNum;
-        if (validCount == (playerCount + 1)) {
+        if (taskDone == (playerCount + 1)) {
             state = GameState.PreparingGame;
+            prepare();
         }
     }
 
-    function prepare() public onlyDealer() isPreparingGame() {
-        if (validCount != playerCount + 1){
-            uint256 distributableMoney;
-            for (uint8 i = 1; i <= playerCount; i++) {
-                if (!players[playerNums[i]].valid) {
-                    players[house].pool += players[playerNums[i]].bet;
-                    distributableMoney += players[playerNums[i]].deposit;
-                    players[playerNums[i]].bet = 0;
-                    players[playerNums[i]].deposit = 0;
-                }
-            }
-            if (!players[house].valid) {
-                for(uint8 i = 1; i <= playerCount; i++) {
-                    if (players[playerNums[i]].valid) {
-                        players[house].pool -= players[playerNums[i]].bet * 2;
-                        players[playerNums[i]].pool += players[playerNums[i]].bet * 3 + players[playerNums[i]].deposit;
-                        players[playerNums[i]].bet = 0;
-                        players[playerNums[i]].deposit = 0;
-                    }
-                }
-            }
+    function prepare() public isPreparingGame() {
+        if (taskDone != playerCount + 1) {
+            kick();
         }
-
-
-        if (validCount == 0 || !players[house].valid)
-        {
+        if (!players[house].valid || taskDone == 0 ) {
             state = GameState.Finished;
-        }
-        else if (
-            (!players[playerNums[1]].valid || players[playerNums[1]].done) && //add split conditions because "done" doesnt work properly
+        } else if (
+            (!players[playerNums[1]].valid || players[playerNums[1]].done) &&
             (!players[playerNums[2]].valid || players[playerNums[2]].done) &&
             (!players[playerNums[3]].valid || players[playerNums[3]].done) &&
             (!players[playerNums[4]].valid || players[playerNums[4]].done)
             ) {
             finishGame();
-        } else { //(validCount >= 1 && players[house].valid)
+        } else {
             globalRand = players[house].randNum;
             for(uint8 i = 1; i <= playerCount; i++) {
                 if (players[playerNums[i]].valid) {
@@ -268,6 +320,9 @@ contract Blackjack{
                 evaluateHand(playerNums[i]);
             }
         }
+        resetValid();
+        players[house].valid = true;
+        blockNum = block.number;
     }
 
     function addCard(uint256 _randNum, address _address) private returns (uint256 remainder) {
@@ -292,6 +347,7 @@ contract Blackjack{
             if (players[_address].cards.length == 2 && !players[_address].split) {
                 players[_address].blackjack = true;
             }
+            players[_address].valid = true;
             players[_address].done = true;
         }
         if (players[_address].cardSum > 21) {
@@ -300,6 +356,7 @@ contract Blackjack{
                 players[_address].cardSum -= 10;
             }
             else {
+                players[_address].valid = true;
                 players[_address].done = true;
             }
         }
@@ -310,6 +367,9 @@ contract Blackjack{
             players[msg.sender].hashNum = _hash;
             randState = RandProcessState.AwaitingHashResponse;
             hitTarget = msg.sender;
+            players[hitTarget].valid = true;
+            players[house].valid = false;
+            blockNum = block.number;
         }
     }
 
@@ -317,6 +377,9 @@ contract Blackjack{
         if (randState == RandProcessState.AwaitingHashResponse) {
             players[house].hashNum = _hash;
             randState = RandProcessState.AwaitingNumRequest;
+            players[house].valid = true;
+            players[hitTarget].valid = false;
+            blockNum = block.number;
         }
     }
 
@@ -328,6 +391,9 @@ contract Blackjack{
             ) {
             players[msg.sender].randNum = _randNum;
             randState = RandProcessState.AwaitingNumResponse;
+            players[hitTarget].valid = true;
+            players[house].valid = false;
+            blockNum = block.number;
         }
     }
 
@@ -338,6 +404,9 @@ contract Blackjack{
             ) {
             players[msg.sender].randNum = _randNum;
             randState = RandProcessState.AwaitingHit;
+            blockNum = block.number;
+            players[house].valid = true;
+            players[hitTarget].valid = false;
         }
     }
 
@@ -348,14 +417,17 @@ contract Blackjack{
             randState == RandProcessState.AwaitingHit
             ) {
             randState = RandProcessState.AwaitingHashRequest;
-            addCard(players[house].randNum ^ players[hitTarget].randNum, hitTarget);
+            addCard(uint256(keccak256(abi.encode(players[house].randNum ^ players[hitTarget].randNum))), hitTarget);
             evaluateHand(hitTarget);
+            blockNum = block.number;
         }
     }
 
     function stand() public onlyPlayer() notDealer() isInProgress() {
         if(!players[msg.sender].done && randState == RandProcessState.AwaitingHashRequest && players[msg.sender].cards.length >= 2) {
             players[msg.sender].done = true;
+            players[msg.sender].valid = true;
+            blockNum = block.number;
         }
     }
 
@@ -372,6 +444,8 @@ contract Blackjack{
         players[msg.sender].pool -= players[msg.sender].bet;
         players[msg.sender].bet *= 2;
         players[msg.sender].done = true;
+        players[msg.sender].valid = true;
+        blockNum = block.number;
     }
 
     function split() public onlyPlayer() notDealer() isInProgress() {
@@ -382,33 +456,36 @@ contract Blackjack{
             players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13
             ) {
             players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
-            players[msg.sender].splitCards.push(players[msg.sender].cards[1]); //Might be removing this later depending on client-side
+            players[msg.sender].splitCards.push(players[msg.sender].cards[1]); //Might be removing this later depending on client-side but make sure to check over rest of split code then
             players[msg.sender].cards.length--;
             players[msg.sender].split = true;
             players[msg.sender].cardSum /= 2;
+            blockNum = block.number;
         }
     }
 
     function transferToSplit() public onlyPlayer() notDealer() isInProgress() {
-        if (players[msg.sender].done && players[msg.sender].split) {
+        if (players[msg.sender].done && players[msg.sender].split && players[msg.sender].splitCards.length == 1) {
             players[msg.sender].splitCards = players[msg.sender].cards;
             players[msg.sender].cards.length = 0;
             players[msg.sender].cards.push(players[msg.sender].splitCards[0]);
             players[msg.sender].altCardSum = players[msg.sender].cardSum;
             players[msg.sender].cardSum = 0;
             players[msg.sender].done = false;
+            blockNum = block.number;
         }
     }
 
-    function finalRandProcess() public onlyDealer() isInProgress() {
+    function finalRandProcess() public /*onlyDealer()*/ isInProgress() {
         if (
-            (!players[playerNums[1]].valid || players[playerNums[1]].done) &&
-            (!players[playerNums[2]].valid || players[playerNums[2]].done) &&
-            (!players[playerNums[3]].valid || players[playerNums[3]].done) &&
-            (!players[playerNums[4]].valid || players[playerNums[4]].done)
+            (block.number > blockNum + 5) ||
+            ((!players[playerNums[1]].valid || (players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
+            (!players[playerNums[2]].valid || (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
+            (!players[playerNums[3]].valid || (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
+            (!players[playerNums[4]].valid || (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
             ) {
-            submitCount = 0;
-            validCount = 0;
+            kick();
+            taskDone = 0;
             players[house].hashNum = 0;
             players[house].valid = false;
             for (uint8 i = 1; i <= playerCount; i++) {
@@ -484,7 +561,7 @@ contract Blackjack{
             msg.sender == playerNums[4]) ||
             (state == GameState.Finished)
             ) {
-            if (_amount <= players[msg.sender].pool) {
+            if (_amount < players[msg.sender].pool) {
                 players[msg.sender].pool -= _amount;
                 players[msg.sender].wallet.transfer(_amount);
             } else {
@@ -495,7 +572,8 @@ contract Blackjack{
         }
     }
 
-    function leave () public onlyPlayer() notDealer() isFinished(){
+    function leave () public onlyPlayer() notDealer() {
+        require (state == GameState.Finished || state == GameState.Accepting, "You can't leave during the game!");
         withdraw(players[msg.sender].pool);
         for (uint8 i = 1; i <= 4; i++) {
             if(playerNums[i] == msg.sender) {
@@ -534,8 +612,9 @@ contract Blackjack{
         hashResponse(returnHash(n));
     }
 
-    function returnSubmitCount() public view returns (uint8) {
-        return submitCount;
+    function doNothing() public {}
+
+    function returnDepo() public returns (uint256) {
+        return players[msg.sender].deposit;
     }
-    function doNothing() public{}
 }

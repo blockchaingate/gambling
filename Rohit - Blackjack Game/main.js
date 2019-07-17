@@ -45,9 +45,6 @@ makeContract().then((contract) => {
 			return createRandom(contract);
 		})
 		.then(() => {
-			return contract.methods.prepare().send({from: ownerKey});
-		})
-		.then(() => {
 			return showInitialCards(contract);
 		})
 		.then(() => {
@@ -79,9 +76,6 @@ makeContract().then((contract) => {
 		})
 		.then(() => {
 			return createRandom(contract);
-		})
-		.then(() => {
-			return contract.methods.prepare().send({from: ownerKey});
 		})
 		.then(() => {
 			return withdraw(contract);
@@ -121,6 +115,12 @@ function joinGame(contract) {
 		return contract.methods.bet(Math.pow(10,18).toString(10)).send({from: client2Key});
 	})
 	.then(() => {
+		return contract.methods.startTimer().send({from: ownerKey});
+	})
+	.then(() => {
+		return timeBurn(contract,ownerKey);
+	})
+	.then(() => {
 		return contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
 	})
 	.then(() => {
@@ -129,18 +129,6 @@ function joinGame(contract) {
 	.then(() => {
 		return contract.methods.submitDeposit().send({from: client2Key, value: 10 * Math.pow(10,18)});
 	})	
-}
-function withdraw(contract) {
-	return Promise.resolve()
-	.then(() => {
-		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
-	})
-	.then(() => {
-		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
-	})
-	.then(() => {
-		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
-	})
 }
 
 function createRandom(contract) {
@@ -228,6 +216,41 @@ function split(contract,_clientKey) {
 	.then(() => {
 		return contract.methods.showSplitCards().call({from: _clientKey})
 		.then(console.log);
+	})
+} 
+
+function withdraw(contract) {
+	return Promise.resolve()
+	.then(() => {
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
+	})
+	.then(() => {
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
+	})
+	.then(() => {
+		return contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
+	})
+}
+
+function timeBurn(contract,_clientKey) {
+	return Promise.resolve()
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
+	})
+	.then(() => {
+		return contract.methods.doNothing().send({from: _clientKey})
 	})
 } 
 /*function count(n) {
