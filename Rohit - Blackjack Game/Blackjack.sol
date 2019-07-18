@@ -2,10 +2,7 @@ pragma solidity 0.5.10;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (-) Implment timers to let anyone call and force     |*|
-|*|     players to call functions with incentives        |*|
 |*| (|) Add tons of error trapping                       |*|
-|*| (|) Run hit phase in parallel                        |*|
 |*| (|) Change if statements to require                  |*|
 |*| (|) Delete temp functions                            |*|
 |*| (|) Fix function and variable state mutabilities     |*|
@@ -29,7 +26,7 @@ pragma solidity 0.5.10;
 contract Blackjack{
 
     enum GameState {Accepting, ProcessingRandom, VerifyingRandom, PreparingGame, InProgress, Finished}
-    GameState state;
+    enum RandProcessState {AwaitingHashRequest,AwaitingHashResponse, AwaitingNumRequest, AwaitingNumResponse, AwaitingHit}
 
     struct Player {
         address payable wallet;
@@ -47,8 +44,10 @@ contract Blackjack{
         uint8 altCardSum;
         uint8 flexibility;
         bool done;
+        RandProcessState randState;
     }
 
+    GameState state;
     uint256 blockNum;
     bool timerStarted;
     mapping(address => Player) public players;
@@ -58,9 +57,7 @@ contract Blackjack{
     uint8 taskDone;
     address house;
     uint256 globalRand;
-    address hitTarget;
-    enum RandProcessState {AwaitingHashRequest,AwaitingHashResponse, AwaitingNumRequest, AwaitingNumResponse, AwaitingHit}
-    RandProcessState randState;
+    address[] target;
 
     constructor() public {
         house = msg.sender;
@@ -175,7 +172,7 @@ contract Blackjack{
     }
 
     function newGame() public onlyDealer() isFinished(){
-        players[house].valid = false; //Might be able to remove this
+        players[house].valid = true;
         players[house].hashNum = 0; //Might be able to remove this
         players[house].randNum = 0; //Check this
         for (uint8 i = 1; i <= playerCount; i++) { //Reset everything except user address and balances
@@ -190,14 +187,14 @@ contract Blackjack{
             players[playerNums[i]].altCardSum = 0;
             players[playerNums[i]].flexibility = 0;
             players[playerNums[i]].done = false;
+            players[playerNums[i]].randState = RandProcessState.AwaitingHashRequest;
         }
         playerCount = 0;
         possibleLoss = 0;
         taskDone = 0;
         globalRand = 0;
-        delete hitTarget;
+        delete target;
         state = GameState.Accepting;
-        randState = RandProcessState.AwaitingHashRequest;
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
@@ -363,68 +360,82 @@ contract Blackjack{
     }
 
     function hashRequest(uint256 _hash) public onlyPlayer() notDealer() isInProgress() {
-        if (randState == RandProcessState.AwaitingHashRequest){
+        if (players[msg.sender].randState == RandProcessState.AwaitingHashRequest){
             players[msg.sender].hashNum = _hash;
-            randState = RandProcessState.AwaitingHashResponse;
-            hitTarget = msg.sender;
-            players[hitTarget].valid = true;
+            players[msg.sender].randState = RandProcessState.AwaitingHashResponse;
+            target.push(msg.sender);
+            players[msg.sender].valid = true;
             players[house].valid = false;
             blockNum = block.number;
         }
     }
 
-    function hashResponse(uint256 _hash) public onlyDealer() isInProgress() {
-        if (randState == RandProcessState.AwaitingHashResponse) {
+    function hashResponse(uint256 _hash, uint8 _index) public onlyDealer() isInProgress() {
+        if (players[target[_index]].randState == RandProcessState.AwaitingHashResponse) {
             players[house].hashNum = _hash;
-            randState = RandProcessState.AwaitingNumRequest;
-            players[house].valid = true;
-            players[hitTarget].valid = false;
+            players[target[_index]].randState = RandProcessState.AwaitingNumRequest;
+            if (target.length == 1) {
+                players[house].valid = true;
+            }
+            players[target[_index]].valid = false;
             blockNum = block.number;
         }
     }
 
     function numRequest(uint256 _randNum) public onlyPlayer() notDealer() isInProgress() { //Add error trapping
         if (
-            randState == RandProcessState.AwaitingNumRequest &&
-            msg.sender == hitTarget &&
+            players[msg.sender].randState == RandProcessState.AwaitingNumRequest &&
             keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum)
             ) {
             players[msg.sender].randNum = _randNum;
-            randState = RandProcessState.AwaitingNumResponse;
-            players[hitTarget].valid = true;
+            players[msg.sender].randState = RandProcessState.AwaitingNumResponse;
+            players[msg.sender].valid = true;
             players[house].valid = false;
             blockNum = block.number;
         }
     }
 
-    function numResponse(uint256 _randNum) public onlyDealer() isInProgress() { //Add error trapping
+    function numResponse(uint256 _randNum, uint8 _index) public onlyDealer() isInProgress() { //Add error trapping
         if (
-            randState == RandProcessState.AwaitingNumResponse &&
+            players[target[_index]].randState == RandProcessState.AwaitingNumResponse &&
             keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum)
             ) {
             players[msg.sender].randNum = _randNum;
-            randState = RandProcessState.AwaitingHit;
+            players[target[_index]].randState = RandProcessState.AwaitingHit;
             blockNum = block.number;
-            players[house].valid = true;
-            players[hitTarget].valid = false;
+            if (target.length == 1) {
+                players[house].valid = true;
+            }
+            players[target[_index]].valid = false;
         }
     }
 
     function hit() public onlyPlayer() notDealer() isInProgress() { //Change to require
         if (
             !players[msg.sender].done &&
-            msg.sender == hitTarget &&
-            randState == RandProcessState.AwaitingHit
+            players[msg.sender].randState == RandProcessState.AwaitingHit
             ) {
-            randState = RandProcessState.AwaitingHashRequest;
-            addCard(uint256(keccak256(abi.encode(players[house].randNum ^ players[hitTarget].randNum))), hitTarget);
-            evaluateHand(hitTarget);
+            players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
+            for (uint8 i = 0; i < target.length; i++) {
+                if (target[i] == msg.sender) {
+                    delete target[i];
+                    target[i] = target[target.length-1];
+                    target.length--;
+                    i = uint8(target.length); //Replace with break statement later
+                }
+            }
+            addCard(uint256(keccak256(abi.encode(players[house].randNum ^ players[msg.sender].randNum))), msg.sender);
+            evaluateHand(msg.sender);
             blockNum = block.number;
         }
     }
 
     function stand() public onlyPlayer() notDealer() isInProgress() {
-        if(!players[msg.sender].done && randState == RandProcessState.AwaitingHashRequest && players[msg.sender].cards.length >= 2) {
+        if(
+            !players[msg.sender].done &&
+            players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
+            players[msg.sender].cards.length >= 2
+            ) {
             players[msg.sender].done = true;
             players[msg.sender].valid = true;
             blockNum = block.number;
@@ -436,8 +447,7 @@ contract Blackjack{
             (players[msg.sender].cardSum >= 9 || players[msg.sender].cardSum <= 11)&&
             players[msg.sender].cards.length >= 2 &&
             !players[msg.sender].done &&
-            msg.sender == hitTarget &&
-            randState == RandProcessState.AwaitingHit,
+            players[msg.sender].randState == RandProcessState.AwaitingHit,
             "Invalid double down."
         );
         hit();
@@ -450,7 +460,7 @@ contract Blackjack{
 
     function split() public onlyPlayer() notDealer() isInProgress() {
         if(
-            randState == RandProcessState.AwaitingHashRequest &&
+            players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
             players[msg.sender].cards.length == 2 &&
             !players[msg.sender].split &&
             players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13
@@ -460,6 +470,7 @@ contract Blackjack{
             players[msg.sender].cards.length--;
             players[msg.sender].split = true;
             players[msg.sender].cardSum /= 2;
+            players[msg.sender].altCardSum = players[msg.sender].cardSum;
             blockNum = block.number;
         }
     }
@@ -469,8 +480,9 @@ contract Blackjack{
             players[msg.sender].splitCards = players[msg.sender].cards;
             players[msg.sender].cards.length = 0;
             players[msg.sender].cards.push(players[msg.sender].splitCards[0]);
-            players[msg.sender].altCardSum = players[msg.sender].cardSum;
-            players[msg.sender].cardSum = 0;
+            players[msg.sender].altCardSum += players[msg.sender].cardSum;
+            players[msg.sender].cardSum = players[msg.sender].altCardSum - players[msg.sender].cardSum;
+            players[msg.sender].altCardSum -= players[msg.sender].cardSum;
             players[msg.sender].done = false;
             blockNum = block.number;
         }
@@ -608,8 +620,8 @@ contract Blackjack{
     function submitHashRequest(uint256 n) public onlyPlayer() isInProgress(){
         hashRequest(returnHash(n));
     }
-    function submitHashResponse(uint256 n) public onlyPlayer() isInProgress(){
-        hashResponse(returnHash(n));
+    function submitHashResponse(uint256 n, uint8 _index) public onlyPlayer() isInProgress(){
+        hashResponse(returnHash(n),_index);
     }
 
     function doNothing() public {}

@@ -34,8 +34,25 @@ const client3Key = acc[3].address;
 const client4Key = acc[4].address;
 
 console.time("Time taken");
-
-makeContract().then((contract) => {
+async function runGame() {
+	let contract = await makeContract();
+	await joinGame(contract);
+	await createRandom(contract);
+	await showInitialCards(contract);
+	await split(contract, client1Key);
+	await hit(contract, client1Key);
+	await contract.methods.stand().send({from: client1Key});
+	await contract.methods.transferToSplit().send({from: client1Key});
+	await hit(contract, client1Key);
+	await contract.methods.stand().send({from: client1Key});
+	await hit(contract, client2Key);
+	await contract.methods.stand().send({from: client2Key});
+	await contract.methods.finalRandProcess().send({from: ownerKey});
+	await createRandom(contract);
+	await withdraw(contract);
+	await console.timeEnd("Time taken");
+}
+/*makeContract().then((contract) => {
 	Promise.all ([
 		contract.methods.newGame().send({from: ownerKey})
 		.then(() => {
@@ -72,10 +89,14 @@ makeContract().then((contract) => {
 			return contract.methods.stand().send({from: client2Key});
 		})
 		.then(() => {
-			return contract.methods.finalRandProcess().send({from: ownerKey})
+			return contract.methods.finalRandProcess().send({from: ownerKey});
 		})
 		.then(() => {
 			return createRandom(contract);
+		})
+		.then(() => {
+			return contract.methods.players(client1Key).call()
+			.then(console.log);
 		})
 		.then(() => {
 			return withdraw(contract);
@@ -88,7 +109,9 @@ makeContract().then((contract) => {
 			console.timeEnd("Time taken");
 		})
 	]);
-});
+});*/
+
+runGame();
 
 function makeContract() {
 	return Blackjack
@@ -121,14 +144,22 @@ function joinGame(contract) {
 		return timeBurn(contract,ownerKey);
 	})
 	.then(() => {
+		return contract.methods.players(client1Key).call()
+		.then(console.log);
+	})
+	.then(() => {
 		return contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
+	})
+	.then(() => {
+		return contract.methods.players(client1Key).call()
+		.then(console.log);
 	})
 	.then(() => {
 		return contract.methods.submitDeposit().send({from: client1Key, value: 10 * Math.pow(10,18)});
 	})
 	.then(() => {
 		return contract.methods.submitDeposit().send({from: client2Key, value: 10 * Math.pow(10,18)});
-	})	
+	})
 }
 
 function createRandom(contract) {
@@ -183,13 +214,13 @@ function hit(contract,_clientKey) {
 		return contract.methods.submitHashRequest('42450096').send({from: _clientKey})
 	})
 	.then(() => {
-		return contract.methods.submitHashResponse('12034602216').send({from: ownerKey})
+		return contract.methods.submitHashResponse('12034602216',0).send({from: ownerKey})
 	})
 	.then(() => {
 		return contract.methods.numRequest('42450096').send({from: _clientKey})
 	})
 	.then(() => {
-		return contract.methods.numResponse('12034602216').send({from: ownerKey})
+		return contract.methods.numResponse('12034602216',0).send({from: ownerKey})
 	})
 	.then(() => {
 		return contract.methods.hit().send({from: _clientKey})
