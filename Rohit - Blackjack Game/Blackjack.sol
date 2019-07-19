@@ -3,6 +3,7 @@ pragma solidity 0.5.10;
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (|) Add tons of error trapping                       |*|
+|*|     (such as int overflowand underflow)              |*|
 |*| (|) Change if statements to require                  |*|
 |*| (|) Delete temp functions                            |*|
 |*| (|) Fix function and variable state mutabilities     |*|
@@ -48,6 +49,8 @@ contract Blackjack{
     }
 
     GameState state;
+    uint256 minBet;
+    uint256 maxBet;
     uint256 blockNum;
     bool timerStarted;
     mapping(address => Player) public players;
@@ -59,7 +62,10 @@ contract Blackjack{
     uint256 globalRand;
     address[] target;
 
-    constructor() public {
+    constructor(uint256 _minBet, uint256 _maxBet) public {
+        require (_maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid bet params");
+        minBet = _minBet;
+        maxBet = _maxBet;
         house = msg.sender;
         players[house].wallet = msg.sender;
         state = GameState.Finished;
@@ -198,7 +204,7 @@ contract Blackjack{
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
-        require(msg.value >= 2 ether, "Your pool must be atleast 2 Ether"); //Make money lower or dynamic later
+        //require(msg.value / 2 >= minBet,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size)"); //Make money lower or dynamic later
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;
@@ -213,7 +219,8 @@ contract Blackjack{
 
     function bet(uint256 _bet) public onlyPlayer() notDealer() isAccepting() {
         require(
-            (_bet >= 1 ether) &&
+            (_bet >= minBet) &&
+            (_bet <= maxBet) &&
             (_bet*2 <= players[msg.sender].pool) &&
             (_bet*2 + possibleLoss + 10 ether < house.balance),
             "Your bet was invalid."
@@ -625,8 +632,4 @@ contract Blackjack{
     }
 
     function doNothing() public {}
-
-    function returnDepo() public returns (uint256) {
-        return players[msg.sender].deposit;
-    }
 }
