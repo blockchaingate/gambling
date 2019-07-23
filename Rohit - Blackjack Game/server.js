@@ -7,15 +7,16 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const fs = require("fs");
+const path = require("path");
 // create express app
 const app = express();
 
 // parse requests of content-type - application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: true }))
+//app.use(bodyParser.urlencoded({ extended: true }))
 
 // parse requests of content-type - application/json
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 // Configuring the database
 const dbConfig = require('./config/database.config.js');
@@ -33,9 +34,22 @@ mongoose.connect(dbConfig.url, {
     process.exit();
 });
 
+let HTMLfile;
+fs.readFile('./index.html', (err, data) => {
+    if (err) throw err;
+    HTMLfile = data;
+});
+
 // define a simple route
 app.get('/', (req, res) => {
-    res.json({"message": "~Blackjack~"});
+    //res.set('Content-Type', 'text/html');
+    console.log(path.join(__dirname, '/index.html'));
+    res.sendFile(path.join(__dirname, '/index.html'));
+    //res.end();
+    //res.json({"message": "~Blackjack~"});
+});
+app.get('/bundle.js', (req, res) => {
+    res.sendFile(path.join(__dirname, '/bundle.js'));
 });
 
 // Require Games routes

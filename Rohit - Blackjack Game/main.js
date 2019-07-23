@@ -1,20 +1,19 @@
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (-) Use function template to simplify code for user  |*|
 |*| (-) Auto create hashs using large random numbers     |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
 const Web3 = require("web3");
-const fs = require("fs");
-
+const bj = require("./Blackjack.js");
+//const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
 let web3 = new Web3("http://localhost:7545", null, {});
 web3.eth.transactionConfirmationBlocks = 1;
 web3.eth.defaultGasPrice = 1;
 web3.eth.defaultGas = 6721975;
 
-let contracts = JSON.parse(fs.readFileSync("Blackjack.json"))["contracts"]
+let contracts = bj.con["contracts"]
 let cBlackjack = contracts["Blackjack.sol:Blackjack"]
 let Blackjack = web3.eth.Contract(JSON.parse(cBlackjack.abi));
 Blackjack.options.data = "0x" + cBlackjack.bin;
@@ -131,7 +130,7 @@ async function withdraw(contract) {
 }
 
 async function timeBurn(contract,_clientKey) {
-	for (var i = 0; i < 5; i ++) {
+	for (let i = 0; i < 5; i ++) {
 		await contract.methods.doNothing().send({from: _clientKey});
 	}
 } 
