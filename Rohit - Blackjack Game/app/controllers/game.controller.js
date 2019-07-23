@@ -116,3 +116,14 @@ exports.delete = (req, res) => {
         });
     });
 };
+
+exports.deleteAll = (req, res) => {
+    Game.deleteMany()
+    .then(games => {
+        res.send(games);
+    }).catch(err => {
+        res.status(500).send({
+            message: err.message || "Some error occurred while deleting games."
+        });
+    });
+};

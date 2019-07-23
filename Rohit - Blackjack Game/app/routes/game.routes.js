@@ -13,6 +13,9 @@ module.exports = (app) => {
     // Update a Game with gameId
     app.put('/games/:gameId', games.update);
 
+    // Delete all Games
+    app.delete('/games', games.deleteAll);
+
     // Delete a Game with gameId
     app.delete('/games/:gameId', games.delete);
 }

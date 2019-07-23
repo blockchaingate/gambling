@@ -7,6 +7,7 @@
 
 const Web3 = require("web3");
 const bj = require("./Blackjack.js");
+const request = require('request');
 //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
 let web3 = new Web3("http://localhost:7545", null, {});
 web3.eth.transactionConfirmationBlocks = 1;
@@ -32,7 +33,7 @@ const client2Key = acc[2].address;
 const client3Key = acc[3].address;
 const client4Key = acc[4].address;
 
-console.time("Time taken");
+//console.time("Time taken");
 async function runGame() {
 	let contract = await makeContract();
 	await contract.methods.newGame().send({from: ownerKey});
@@ -50,19 +51,31 @@ async function runGame() {
 	await contract.methods.finalRandProcess().send({from: ownerKey});
 	await createRandom(contract);
 	await withdraw(contract);
-	await console.timeEnd("Time taken");
+	//await console.timeEnd("Time taken");
 }
 
-runGame();
-
-function makeContract() {
-	return Blackjack
+async function makeContract() { 
+	let contract = await Blackjack
 	.deploy({
 		"arguments": [Math.pow(10,18).toString(10),Math.pow(10,19).toString(10)],
 	})
 	.send({
 		from: ownerKey
 	})
+	await request({
+		url: 'http://localhost:3000/games',
+		method: 'POST',
+		json: {
+		  address: contract.address,
+		  minBet: Math.pow(10,18).toString(10),
+		  maxBet: Math.pow(10,19).toString(10)
+		}
+	  }, (err, res, body) => {
+		if (err) { return console.log(err); }
+		console.log(body);
+	  }
+	);
+	return contract;
 }
 
 async function joinGame(contract) {
@@ -135,6 +148,19 @@ async function timeBurn(contract,_clientKey) {
 	}
 } 
 
+async function remove() {
+	await request({
+		url: 'http://localhost:3000/games',
+		method: 'DELETE'
+	  }, (err, res, body) => {
+		if (err) { return console.log(err); }
+		console.log(body);
+	})
+}
+
+window.runGame = runGame;
+window.makeContract = makeContract;
+window.remove = remove;
 
 //=====================================================================================Temp code=====================================================================================\\
 

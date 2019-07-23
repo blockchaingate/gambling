@@ -34,22 +34,19 @@ mongoose.connect(dbConfig.url, {
     process.exit();
 });
 
-let HTMLfile;
-fs.readFile('./index.html', (err, data) => {
-    if (err) throw err;
-    HTMLfile = data;
-});
-
 // define a simple route
 app.get('/', (req, res) => {
-    //res.set('Content-Type', 'text/html');
-    console.log(path.join(__dirname, '/index.html'));
+    //console.log(path.join(__dirname, '/index.html'));
     res.sendFile(path.join(__dirname, '/index.html'));
-    //res.end();
     //res.json({"message": "~Blackjack~"});
 });
+
 app.get('/bundle.js', (req, res) => {
     res.sendFile(path.join(__dirname, '/bundle.js'));
+});
+
+app.get('/bg.jpg', (req, res) => {
+    res.sendFile(path.join(__dirname, '/bg.jpg'));
 });
 
 // Require Games routes

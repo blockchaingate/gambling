@@ -2,12 +2,59 @@
 <!doctype html>
 <html>
   <head>
-    <title>Blackjack DAPP</title>
-  </head>
-  <body>
-    <div class="container">
-      <h2>Blackjack DAPP</h2>
-    </div>
+    <title>Blackjack</title>
+    <style>
+      body, html {
+        height: 100%;
+      }
+      .button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 15px 25px;
+        text-align: center;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .button:hover {
+        background-color: green;
+      }
+      .bg {
+        background-image: url("bg.jpg");
+
+        height: auto; 
+
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+      }
+    </style>
     <script src="bundle.js"></script>
+    <script type="text/javascript">
+      window.privateKey = "No key submitted yet"
+      function handleIt(txt) {
+      privateKey = txt;
+      }
+      function showKey() {
+        alert(privateKey);
+      }
+    </script>
+  </head>
+  <body class = "bg">
+    <div class="container">
+      <h2 style="color:beige; font-size: 50px;">Blackjack</h2>
+    </div>
+    <input class = "button" id="Run Game" type="button" value="Run Game" onclick="runGame();" />
+    <br /><br />
+    <input class = "button" id="Delete Entries" type="button" value="Delete Entries" onclick="remove();" />
+    <br /><br />
+    <form name="myform" action="javascript:handleIt(privateKeyField.value)">  
+      <input type="text" name="privateKeyField" id="privateKeyField" maxlength="64"> 
+      <input type="submit" name="Submit" value="Update"/>
+    </form>
+    <br />
+    <input class = "button" id="Show Key" type="button" value="Show Key" onclick="showKey();" />
+    <br /><br />
+    <input class = "button" id="Create Game" type="button" value="Create Game" onclick="makeContract();" />
   </body>
 </html>
