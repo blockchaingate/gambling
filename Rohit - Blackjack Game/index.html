@@ -1,60 +1,145 @@
-<!-- index.html -->
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
     <title>Blackjack</title>
-    <style>
-      body, html {
+    
+    <!-- style the webpage -->
+    <style> 
+      html, body {
+        width: 100%;
         height: 100%;
       }
-      .button {
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-        padding: 15px 25px;
-        text-align: center;
-        font-size: 16px;
-        cursor: pointer;
-      }
-      .button:hover {
-        background-color: green;
-      }
-      .bg {
+      * { padding: 0; margin: 0; }
+      canvas {
         background-image: url("bg.jpg");
-
-        height: auto; 
-
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: 100% 100%;
+        display: block;
+        margin: 0 auto;
+        width: 100%;
+        height: 100%;
       }
     </style>
+
+    <!-- Define and load in required functions -->
     <script src="bundle.js"></script>
     <script type="text/javascript">
-      window.privateKey = "No key submitted yet"
-      function handleIt(txt) {
-      privateKey = txt;
+      buttons = [];
+      index = null;
+      function setPrivateKey(txt) {
+        privateKey = txt;
       }
       function showKey() {
         alert(privateKey);
+        document.getElementById("Show Key").remove();
+      }
+      function addButton (_x,_y,_width,_height,_buttonColour,_textColour,_text,_func) {
+        
+        //Add button to array
+        buttons.push({
+          x: _x,
+          y: _y,
+          width: _width,
+          height: _height,
+          func: _func
+        });
+
+        // Render button
+        ctx.fillStyle = _buttonColour;
+        ctx.fillRect(_x, _y, _width, _height);
+        let fontSize = Math.min(_width*2/_text.length,_height)*0.9;
+        ctx.font = fontSize + "px Balthazar";
+        ctx.fillStyle = _textColour;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(_text, _x + _width/2, _y + _height/2); 
       }
     </script>
   </head>
+  <body>
+    <canvas id="myCanvas"></canvas>
+    <script>
+      // Set up canvas
+      var canvas = document.getElementById("myCanvas");
+      var ctx = canvas.getContext("2d");
+      ctx.canvas.width  = window.innerWidth;
+      ctx.canvas.height = window.innerHeight;
+
+      ctx.font = "50px Algerian";
+      ctx.fillStyle = "rgb(255,223,0)";
+      ctx.textAlign = "center";
+      ctx.fillText("Blackjack", canvas.width/2, 100); 
+      /*// Coordinates for ball
+      var x = canvas.width/2;
+      var y = canvas.height;
+
+      // Animate
+      function draw() {
+          ctx.beginPath();
+          ctx.clearRect(x-13, y-13, 26, 26);
+          ctx.arc(x, y, 10, 0, Math.PI*2);
+          ctx.fillStyle = "#0095DD";
+          ctx.fill();
+          ctx.closePath();
+          x += 2;
+          y -= 2;
+      }*/
+
+      // Render button
+      addButton(canvas.width/2+20, 220, 160, 70,"#4CAF50","white","Join Game",() => {
+        alert('Button was clicked!');
+        ctx.clearRect(canvas.width/2 +20 - 1, 220 - 1, 160 + 2, 70 + 2);
+        buttons.splice(index,1);
+      })
+      addButton(canvas.width/2-180, 220, 160, 70,"#4CAF50","white","Create Game",() => {
+        alert('Button was clicked!');
+        ctx.clearRect(canvas.width/2-180 -1, 220 - 1, 160 + 2, 70 + 2);
+        buttons.splice(index,1);
+      })
+  
+      // Add event listener to canvas element
+      function checkClicks(event) {
+        for (index = 0; index < buttons.length; index++) {
+          if (
+            event.x > buttons[index].x && 
+            event.x < buttons[index].x + buttons[index].width &&
+            event.y > buttons[index].y && 
+            event.y < buttons[index].y + buttons[index].height
+            ) {
+            // Executes if button was clicked
+            buttons[index].func();
+          }
+        }
+      }
+
+      canvas.addEventListener('click', checkClicks);
+      
+      //setInterval(draw, 10);
+    </script>
+  </body>
+</html>
+
+
+
+<!--
+<!doctype html>
+<html>
+  
   <body class = "bg">
     <div class="container">
-      <h2 style="color:beige; font-size: 50px;">Blackjack</h2>
+      <h2 style="color:yellow; font-size: 50px; text-align: center">Blackjack</h2>
     </div>
     <input class = "button" id="Run Game" type="button" value="Run Game" onclick="runGame();" />
     <br /><br />
     <input class = "button" id="Delete Entries" type="button" value="Delete Entries" onclick="remove();" />
     <br /><br />
-    <form name="myform" action="javascript:handleIt(privateKeyField.value)">  
+    <form name="myform" action="javascript:setPrivateKey(privateKeyField.value)" style="text-align: center">  
       <input type="text" name="privateKeyField" id="privateKeyField" maxlength="64"> 
       <input type="submit" name="Submit" value="Update"/>
     </form>
-    <br />
+    <br /><br />
     <input class = "button" id="Show Key" type="button" value="Show Key" onclick="showKey();" />
     <br /><br />
     <input class = "button" id="Create Game" type="button" value="Create Game" onclick="makeContract();" />
   </body>
 </html>
+-->
