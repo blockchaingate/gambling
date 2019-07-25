@@ -9,111 +9,152 @@
       html, body {
         width: 100%;
         height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
       }
-      * { padding: 0; margin: 0; }
       canvas {
         background-image: url("bg.jpg");
-        display: block;
-        margin: 0 auto;
-        width: 100%;
-        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
       }
     </style>
 
     <!-- Define and load in required functions -->
     <script src="bundle.js"></script>
     <script type="text/javascript">
-      buttons = [];
-      index = null;
-      function setPrivateKey(txt) {
-        privateKey = txt;
-      }
-      function showKey() {
-        alert(privateKey);
-        document.getElementById("Show Key").remove();
-      }
-      function addButton (_x,_y,_width,_height,_buttonColour,_textColour,_text,_func) {
+      window.addEventListener("load", () =>{
         
-        //Add button to array
-        buttons.push({
-          x: _x,
-          y: _y,
-          width: _width,
-          height: _height,
-          func: _func
-        });
+        // Set up canvas
+        let canvas = document.getElementById("myCanvas");
+        let ctx = canvas.getContext("2d");
 
-        // Render button
-        ctx.fillStyle = _buttonColour;
-        ctx.fillRect(_x, _y, _width, _height);
-        let fontSize = Math.min(_width*2/_text.length,_height)*0.9;
-        ctx.font = fontSize + "px Balthazar";
-        ctx.fillStyle = _textColour;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(_text, _x + _width/2, _y + _height/2); 
-      }
+        buttons = [];
+        let joinButton, createButton;
+        let w,h;
+        let privateKey;      
+               
+        function setPrivateKey(txt) {
+          privateKey = txt;
+        }
+
+        function showKey() {
+          alert(privateKey);
+          document.getElementById("Show Key").remove();
+        }
+
+        function addButton (_x,_y,_width,_height,_buttonColour,_textColour,_text,_func) {
+          
+          //Add button to array
+          let button = {
+            x: _x,
+            y: _y,
+            width: _width,
+            height: _height,
+            buttonColour: _buttonColour,
+            textColour: _textColour,
+            text: _text,
+            func: _func
+          };
+          //button.func = _func.bind(button);
+          buttons.push(button);
+          return button;
+        }
+
+        // Clicking event listener function
+        function checkClicks(event) {
+          for (let index = 0; index < buttons.length; index++) {
+            if (
+              event.x > buttons[index].x + w/2 && 
+              event.x < buttons[index].x  + buttons[index].width + w/2 &&
+              event.y > buttons[index].y + h/2 && 
+              event.y < buttons[index].y + buttons[index].height + h/2
+              ) {
+              // Executes if button was clicked
+              buttons[index].func(buttons[index]);
+              break;
+            }
+          }
+        }
+
+        // Resize canvas event listener function
+        function resizeCanvas() {
+          w = document.body.offsetWidth;
+          h = document.body.offsetHeight;
+          ctx.canvas.width  = w;
+          ctx.canvas.height = h;
+          ctx.translate(w/2,h/2);
+          joinButton.y = -h/3 + 40;
+          createButton.y = -h/3 + 40;
+          draw();
+        }
+                  
+        // Function to make create and join game buttons
+        function createOrJoinButtons () {
+          joinButton = addButton(10, -200, 200, 75,"#4CAF50","white","Create Game",() => {
+            alert('Game Created!');
+            makeContract();
+            arrRemove(buttons, joinButton);
+            arrRemove(buttons, createButton);
+          })
+
+          createButton = addButton(-210,-200,200,75,"#4CAF50","white","Join Game",() => {
+            alert('Button was clicked!');
+            arrRemove(buttons, joinButton);
+            arrRemove(buttons, createButton);
+          })
+        }
+
+        // Function to remove an element from an array
+        function arrRemove(arr,element) {
+          let index = arr.indexOf(element);
+          if (index != -1) {
+            arr.splice(index,1);
+          }
+        }
+
+        // Draw all elements dynamic to window size
+        function draw() {
+          
+          // Draw Title
+          ctx.clearRect(-w/2,-h/2,w,h)
+          ctx.font = "50px Algerian";
+          ctx.fillStyle = "rgb(255,223,0)";
+          ctx.textAlign = "center";
+          ctx.fillText("Blackjack", 0, -h/3); 
+          
+          // Render buttons
+          for (let index = 0; index < buttons.length; index++) {
+            ctx.fillStyle = buttons[index].buttonColour;
+            ctx.fillRect(buttons[index].x, buttons[index].y, buttons[index].width, buttons[index].height);
+            let fontSize = Math.min(buttons[index].width*2/buttons[index].text.length,buttons[index].height)*0.9;
+            ctx.font = fontSize + "px Balthazar";
+            ctx.fillStyle = buttons[index].textColour;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(buttons[index].text, buttons[index].x + buttons[index].width/2, buttons[index].y + buttons[index].height/2); 
+          }
+        }
+        
+        // Animate
+        function step () {
+          draw();
+          requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+
+        createOrJoinButtons();
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas, false);
+        canvas.addEventListener('click', checkClicks);
+      });
     </script>
   </head>
   <body>
     <canvas id="myCanvas"></canvas>
     <script>
-      // Set up canvas
-      var canvas = document.getElementById("myCanvas");
-      var ctx = canvas.getContext("2d");
-      ctx.canvas.width  = window.innerWidth;
-      ctx.canvas.height = window.innerHeight;
-
-      ctx.font = "50px Algerian";
-      ctx.fillStyle = "rgb(255,223,0)";
-      ctx.textAlign = "center";
-      ctx.fillText("Blackjack", canvas.width/2, 100); 
-      /*// Coordinates for ball
-      var x = canvas.width/2;
-      var y = canvas.height;
-
-      // Animate
-      function draw() {
-          ctx.beginPath();
-          ctx.clearRect(x-13, y-13, 26, 26);
-          ctx.arc(x, y, 10, 0, Math.PI*2);
-          ctx.fillStyle = "#0095DD";
-          ctx.fill();
-          ctx.closePath();
-          x += 2;
-          y -= 2;
-      }*/
-
-      // Render button
-      addButton(canvas.width/2+20, 220, 160, 70,"#4CAF50","white","Join Game",() => {
-        alert('Button was clicked!');
-        ctx.clearRect(canvas.width/2 +20 - 1, 220 - 1, 160 + 2, 70 + 2);
-        buttons.splice(index,1);
-      })
-      addButton(canvas.width/2-180, 220, 160, 70,"#4CAF50","white","Create Game",() => {
-        alert('Button was clicked!');
-        ctx.clearRect(canvas.width/2-180 -1, 220 - 1, 160 + 2, 70 + 2);
-        buttons.splice(index,1);
-      })
-  
-      // Add event listener to canvas element
-      function checkClicks(event) {
-        for (index = 0; index < buttons.length; index++) {
-          if (
-            event.x > buttons[index].x && 
-            event.x < buttons[index].x + buttons[index].width &&
-            event.y > buttons[index].y && 
-            event.y < buttons[index].y + buttons[index].height
-            ) {
-            // Executes if button was clicked
-            buttons[index].func();
-          }
-        }
-      }
-
-      canvas.addEventListener('click', checkClicks);
       
-      //setInterval(draw, 10);
     </script>
   </body>
 </html>
