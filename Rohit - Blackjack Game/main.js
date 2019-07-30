@@ -8,15 +8,16 @@
 const Web3 = require("web3");
 const bj = require("./Blackjack.js");
 const request = require('request');
-//const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
-let web3 = new Web3("http://localhost:7545", null, {});
+// Probably dont need --> converting from testnet to real //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
+let web3 = new Web3(new Web3.providers.WebsocketProvider("http://localhost:7545"));
+//let web3 = new Web3("http://localhost:7545", null, {});
 web3.eth.transactionConfirmationBlocks = 1;
 web3.eth.defaultGasPrice = 1;
 web3.eth.defaultGas = 6721975;
 
 let contracts = bj.con["contracts"]
 let cBlackjack = contracts["Blackjack.sol:Blackjack"]
-let Blackjack = web3.eth.Contract(JSON.parse(cBlackjack.abi));
+let Blackjack = new web3.eth.Contract(JSON.parse(cBlackjack.abi),{ gasLimit:6721975, gasPrice: 1 }); //Remove options for older Web3 version
 Blackjack.options.data = "0x" + cBlackjack.bin;
 
 let acc = [];
@@ -34,8 +35,8 @@ const client3Key = acc[3].address;
 const client4Key = acc[4].address;
 
 //console.time("Time taken");
-async function runGame() {
-	let contract = await makeContract();
+async function runGame(contract) {
+	//let contract = await makeContract();
 	await contract.methods.newGame().send({from: ownerKey});
 	await joinGame(contract);
 	await createRandom(contract);
@@ -66,7 +67,7 @@ async function makeContract() {
 		url: 'http://localhost:3000/games',
 		method: 'POST',
 		json: {
-		  address: contract.address,
+		  address: contract.options.address,
 		  minBet: Math.pow(10,18).toString(10),
 		  maxBet: Math.pow(10,19).toString(10)
 		}
@@ -86,10 +87,10 @@ async function joinGame(contract) {
 	await contract.methods.startTimer().send({from: ownerKey});
 	await timeBurn(contract,ownerKey);
 	await contract.methods.players(client1Key).call()
-		.then(console.log);
+		/*.then(console.log)*/;
 	await contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
 	await contract.methods.players(client1Key).call()
-		.then(console.log);
+		/*.then(console.log)*/;
 	await contract.methods.submitDeposit().send({from: client1Key, value: 10 * Math.pow(10,18)});
 	await contract.methods.submitDeposit().send({from: client2Key, value: 10 * Math.pow(10,18)});
 }
@@ -117,11 +118,11 @@ async function showInitialCards(contract) {
 }
 
 async function hit(contract,_clientKey) {
-	await contract.methods.submitHashRequest('42450096').send({from: _clientKey})
-	await contract.methods.submitHashResponse('12034602216',0).send({from: ownerKey})
-	await contract.methods.numRequest('42450096').send({from: _clientKey})
-	await contract.methods.numResponse('12034602216',0).send({from: ownerKey})
-	await contract.methods.hit().send({from: _clientKey})
+	await contract.methods.submitHashRequest('42450096').send({from: _clientKey});
+	await contract.methods.submitHashResponse('12034602216',0).send({from: ownerKey});
+	await contract.methods.numRequest('42450096').send({from: _clientKey});
+	await contract.methods.numResponse('12034602216',0).send({from: ownerKey});
+	await contract.methods.hit().send({from: _clientKey});
 	await contract.methods.showCards().call({from: _clientKey})
 		.then(console.log);
 	await contract.methods.showSplitCards().call({from: _clientKey})
@@ -129,7 +130,7 @@ async function hit(contract,_clientKey) {
 }
 
 async function split(contract,_clientKey) {
-	await contract.methods.split().send({from: _clientKey})
+	await contract.methods.split().send({from: _clientKey});
 	await contract.methods.showCards().call({from: _clientKey})
 		.then(console.log);
 	await contract.methods.showSplitCards().call({from: _clientKey})
@@ -146,7 +147,7 @@ async function timeBurn(contract,_clientKey) {
 	for (let i = 0; i < 5; i ++) {
 		await contract.methods.doNothing().send({from: _clientKey});
 	}
-} 
+} // temp
 
 async function remove() {
 	await request({
@@ -156,11 +157,30 @@ async function remove() {
 		if (err) { return console.log(err); }
 		console.log(body);
 	})
+} // temp
+
+//runGame();
+/*window.runGame = runGame;
+window.makeContract = makeContract;
+window.remove = remove;*/
+async function runGameWithEventListeners(){
+	let contract = await makeContract();
+	runGame(contract);
+	makeEventListener(contract);
+}
+runGameWithEventListeners();
+function makeEventListener(contract) {
+	contract.once('StateChange',
+	/*contract.events.StateChange(*/function (err, event) { //Commented code for unlimited listening
+		if (err) {
+			console.log(err);
+		} else {
+			console.log(event.returnValues.newState);
+		}
+	});
 }
 
-window.runGame = runGame;
-window.makeContract = makeContract;
-window.remove = remove;
+
 
 //=====================================================================================Temp code=====================================================================================\\
 

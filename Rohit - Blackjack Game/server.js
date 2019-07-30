@@ -45,6 +45,10 @@ app.get('/bundle.js', (req, res) => {
     res.sendFile(path.join(__dirname, '/bundle.js'));
 });
 
+app.get('/bundle.js', (req, res) => {
+    res.sendFile(path.join(__dirname, './CanvasInput-master/CanvasInput.js'));
+});
+
 app.get('/bg.jpg', (req, res) => {
     res.sendFile(path.join(__dirname, '/bg.jpg'));
 });
@@ -56,37 +60,3 @@ require('./app/routes/game.routes.js')(app);
 app.listen(3000, () => {
     console.log("Server is listening on port 3000");
 });
-
-/*var mongoose = require('mongoose');
-
-mongoose.connect('mongodb://192.168.1.112/blackjack', {useNewUrlParser: true});
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function() {
-    console.log("yay");
-    
-    var gameProperties = new mongoose.Schema({
-        name: String,
-        minBet: Number,
-        maxBet: Number
-    });
-
-    gameProperties.methods.test = function () {
-        console.log("This is a test: " + this.name);
-    }
-
-    var Game = mongoose.model('Game',gameProperties);
-    var first = new Game({ name: 'First' });
-    console.log(first.name);
-    first.test();
-
-    first.save(function (err, first) {
-        if (err) return console.error(err);
-        //first.test();
-    });
-
-    Game.find(function (err, games) {
-        if (err) return console.error(err);
-        console.log(games);
-    });
-});*/

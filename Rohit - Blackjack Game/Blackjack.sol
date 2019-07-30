@@ -2,14 +2,15 @@ pragma solidity 0.5.10;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (|) Add tons of error trapping                       |*|
+|*| (+) Fix playerCount indexes                          |*|
+|*| (+) Add tons of error trapping                       |*|
 |*|     (such as int overflowand underflow)              |*|
-|*| (|) Change if statements to require                  |*|
-|*| (|) Delete temp functions                            |*|
-|*| (|) Fix function and variable state mutabilities     |*|
-|*| (|) Clean up code and code order                     |*|
-|*| (|) Clean up require && statements                   |*|
-|*| (|) Move some require statements to modifiers        |*|
+|*| (+) Change if statements to require                  |*|
+|*| (+) Delete temp functions                            |*|
+|*| (+) Fix function and variable state mutabilities     |*|
+|*| (+) Clean up code and code order                     |*|
+|*| (+) Clean up require && statements                   |*|
+|*| (+) Move some require statements to modifiers        |*|
 |*| (+) Change blockNum + 5 to a more reasonable value   |*|
 |*| (x) Add insurance option                             |*|
 |*| (x) optimize deposit for users                       |*|
@@ -28,6 +29,7 @@ contract Blackjack{
 
     enum GameState {Accepting, ProcessingRandom, VerifyingRandom, PreparingGame, InProgress, Finished}
     enum RandProcessState {AwaitingHashRequest,AwaitingHashResponse, AwaitingNumRequest, AwaitingNumResponse, AwaitingHit}
+    event StateChange(uint8 newState);
 
     struct Player {
         address payable wallet;
@@ -143,7 +145,8 @@ contract Blackjack{
         ); //finish adding states later
         require (block.number > blockNum + 5, "Players still have time to make a move.");
         kick();
-        state = GameState(uint(state)+1);
+        state = GameState(uint8(state)+1);
+        emit StateChange(uint8(state));
     }
 
     function kick() private {
@@ -201,6 +204,7 @@ contract Blackjack{
         globalRand = 0;
         delete target;
         state = GameState.Accepting;
+        emit StateChange(uint8(state)); //temp
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
@@ -245,6 +249,7 @@ contract Blackjack{
         kick();
         players[house].pool += msg.value;
         state = GameState.ProcessingRandom;
+        emit StateChange(uint8(state));
         taskDone = 0;
         resetValid();
         blockNum = block.number;
@@ -266,6 +271,7 @@ contract Blackjack{
         if (taskDone == (playerCount + 1)) {
             taskDone = 0;
             state = GameState.VerifyingRandom;
+            emit StateChange(uint8(state));
             resetValid();
             blockNum = block.number;
         }
@@ -281,6 +287,7 @@ contract Blackjack{
         players[msg.sender].randNum = _randNum;
         if (taskDone == (playerCount + 1)) {
             state = GameState.PreparingGame;
+            emit StateChange(uint8(state)); //temp
             prepare();
         }
     }
@@ -307,6 +314,7 @@ contract Blackjack{
             }
             globalRand = uint256(keccak256(abi.encode(globalRand)));
             state = GameState.InProgress;
+            emit StateChange(uint8(state)); //temp
             deal();
         }
     }
@@ -370,6 +378,7 @@ contract Blackjack{
         if (players[msg.sender].randState == RandProcessState.AwaitingHashRequest){
             players[msg.sender].hashNum = _hash;
             players[msg.sender].randState = RandProcessState.AwaitingHashResponse;
+            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
             target.push(msg.sender);
             players[msg.sender].valid = true;
             players[house].valid = false;
@@ -381,6 +390,7 @@ contract Blackjack{
         if (players[target[_index]].randState == RandProcessState.AwaitingHashResponse) {
             players[house].hashNum = _hash;
             players[target[_index]].randState = RandProcessState.AwaitingNumRequest;
+            emit StateChange(uint8(players[target[_index]].randState) + 6);
             if (target.length == 1) {
                 players[house].valid = true;
             }
@@ -396,6 +406,7 @@ contract Blackjack{
             ) {
             players[msg.sender].randNum = _randNum;
             players[msg.sender].randState = RandProcessState.AwaitingNumResponse;
+            emit StateChange(uint8(players[msg.sender].randState) + 6);
             players[msg.sender].valid = true;
             players[house].valid = false;
             blockNum = block.number;
@@ -409,6 +420,7 @@ contract Blackjack{
             ) {
             players[msg.sender].randNum = _randNum;
             players[target[_index]].randState = RandProcessState.AwaitingHit;
+            emit StateChange(uint8(players[target[_index]].randState) + 6);
             blockNum = block.number;
             if (target.length == 1) {
                 players[house].valid = true;
@@ -423,6 +435,7 @@ contract Blackjack{
             players[msg.sender].randState == RandProcessState.AwaitingHit
             ) {
             players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
+            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
             for (uint8 i = 0; i < target.length; i++) {
                 if (target[i] == msg.sender) {
                     delete target[i];
@@ -512,6 +525,7 @@ contract Blackjack{
                 players[playerNums[i]].valid = false;
             }
             state = GameState.ProcessingRandom;
+            emit StateChange(uint8(state)); //temp
         }
     }
 
@@ -529,6 +543,7 @@ contract Blackjack{
             }
         }
         state = GameState.Finished;
+        emit StateChange(uint8(state)); //temp
     }
 
     function revealDealerCards() private {

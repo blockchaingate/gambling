@@ -23,6 +23,7 @@
 
     <!-- Define and load in required functions -->
     <script src="bundle.js"></script>
+    <script src="CanvasInput-master/CanvasInput.js"></script>
     <script type="text/javascript">
       window.addEventListener("load", () =>{
         
@@ -30,18 +31,17 @@
         let canvas = document.getElementById("myCanvas");
         let ctx = canvas.getContext("2d");
 
-        buttons = [];
-        let joinButton, createButton;
+        let buttons = [];
+        let joinButton, createButton, testButton;
         let w,h;
-        let privateKey;      
-               
-        function setPrivateKey(txt) {
-          privateKey = txt;
-        }
-
-        function showKey() {
-          alert(privateKey);
-          document.getElementById("Show Key").remove();
+        let privateKey;
+        
+        // Function to remove an element from an array
+        function arrRemove(arr,element) {
+          let index = arr.indexOf(element);
+          if (index != -1) {
+            arr.splice(index,1);
+          }
         }
 
         function addButton (_x,_y,_width,_height,_buttonColour,_textColour,_text,_func) {
@@ -62,6 +62,18 @@
           return button;
         }
 
+        // Resize canvas event listener function
+        function resizeCanvas() {
+          w = document.body.offsetWidth;
+          h = document.body.offsetHeight;
+          ctx.canvas.width  = w;
+          ctx.canvas.height = h;
+          ctx.translate(w/2,h/2);
+          joinButton.y = -h/3 + 40;
+          createButton.y = -h/3 + 40;
+          draw();
+        }
+
         // Clicking event listener function
         function checkClicks(event) {
           for (let index = 0; index < buttons.length; index++) {
@@ -76,42 +88,40 @@
               break;
             }
           }
+        }       
+
+        function setPrivateKey(txt) {
+          privateKey = txt;
         }
 
-        // Resize canvas event listener function
-        function resizeCanvas() {
-          w = document.body.offsetWidth;
-          h = document.body.offsetHeight;
-          ctx.canvas.width  = w;
-          ctx.canvas.height = h;
-          ctx.translate(w/2,h/2);
-          joinButton.y = -h/3 + 40;
-          createButton.y = -h/3 + 40;
-          draw();
+        function showKey() {
+          alert(privateKey);
+          document.getElementById("Show Key").remove();
         }
                   
         // Function to make create and join game buttons
-        function createOrJoinButtons () {
+        function makeCreateJoinButtons () {
           joinButton = addButton(10, -200, 200, 75,"#4CAF50","white","Create Game",() => {
             alert('Game Created!');
             makeContract();
             arrRemove(buttons, joinButton);
             arrRemove(buttons, createButton);
+            makeTestButton();
           })
 
           createButton = addButton(-210,-200,200,75,"#4CAF50","white","Join Game",() => {
             alert('Button was clicked!');
             arrRemove(buttons, joinButton);
             arrRemove(buttons, createButton);
+            makeTestButton();
           })
         }
-
-        // Function to remove an element from an array
-        function arrRemove(arr,element) {
-          let index = arr.indexOf(element);
-          if (index != -1) {
-            arr.splice(index,1);
-          }
+        function makeTestButton () {
+          testButton = addButton(-100,-200,200,75,"#4CAF50","white","test",() => {
+            alert('Button was clicked!');
+            arrRemove(buttons, testButton);
+            makeCreateJoinButtons() ;
+          })
         }
 
         // Draw all elements dynamic to window size
@@ -144,7 +154,7 @@
         }
         requestAnimationFrame(step);
 
-        createOrJoinButtons();
+        makeCreateJoinButtons();
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas, false);
         canvas.addEventListener('click', checkClicks);
