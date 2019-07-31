@@ -2,6 +2,7 @@
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (-) Auto create hashs using large random numbers     |*|
+|*| (-) Rename to api.js							     |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -9,14 +10,13 @@ const Web3 = require("web3");
 const bj = require("./Blackjack.js");
 const request = require('request');
 // Probably dont need --> converting from testnet to real //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
-let web3 = new Web3(new Web3.providers.WebsocketProvider("http://localhost:7545"));
+let web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:7545"));
 //let web3 = new Web3("http://localhost:7545", null, {});
 web3.eth.transactionConfirmationBlocks = 1;
 web3.eth.defaultGasPrice = 1;
 web3.eth.defaultGas = 6721975;
 
-let contracts = bj.con["contracts"]
-let cBlackjack = contracts["Blackjack.sol:Blackjack"]
+let cBlackjack = bj.con["contracts"]["Blackjack.sol:Blackjack"];
 let Blackjack = new web3.eth.Contract(JSON.parse(cBlackjack.abi),{ gasLimit:6721975, gasPrice: 1 }); //Remove options for older Web3 version
 Blackjack.options.data = "0x" + cBlackjack.bin;
 
@@ -138,9 +138,10 @@ async function split(contract,_clientKey) {
 } 
 
 async function withdraw(contract) {
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
 	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
 	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
+	await remove(contract);
+	await contract.methods.end().send({from: ownerKey});
 }
 
 async function timeBurn(contract,_clientKey) {
@@ -149,26 +150,26 @@ async function timeBurn(contract,_clientKey) {
 	}
 } // temp
 
-async function remove() {
+async function remove(contract) {
 	await request({
-		url: 'http://localhost:3000/games',
+		url: 'http://localhost:3000/games/'+contract.options.address,
 		method: 'DELETE'
 	  }, (err, res, body) => {
 		if (err) { return console.log(err); }
 		console.log(body);
 	})
-} // temp
-
-//runGame();
-/*window.runGame = runGame;
-window.makeContract = makeContract;
-window.remove = remove;*/
-async function runGameWithEventListeners(){
-	let contract = await makeContract();
-	runGame(contract);
-	makeEventListener(contract);
 }
-runGameWithEventListeners();
+
+async function getGames() {
+	await request('http://localhost:3000/games', { json: true }, (err, res, body) => {
+		if (err) { return console.log(err); }
+		for (let i = 0; i < body.length; i++)
+		{
+			console.log(body[i].address);
+		}
+	});
+}
+
 function makeEventListener(contract) {
 	contract.once('StateChange',
 	/*contract.events.StateChange(*/function (err, event) { //Commented code for unlimited listening
@@ -179,6 +180,22 @@ function makeEventListener(contract) {
 		}
 	});
 }
+
+
+/*window.runGame = runGame;
+window.makeContract = makeContract;
+window.remove = remove;
+window.getGames = getGames;*/
+
+async function runGameWithEventListeners(){
+	let contract = await makeContract();
+	runGame(contract);
+	makeEventListener(contract);
+}
+
+runGameWithEventListeners();
+//runGame();
+
 
 
 

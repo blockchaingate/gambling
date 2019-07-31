@@ -29,7 +29,7 @@ exports.create = (req, res) => {
 
 // Retrieve and return all games from the database.
 exports.findAll = (req, res) => {
-    Game.find()
+    Game.find().sort({$natural:1}).limit(10)
     .then(games => {
         res.send(games);
     }).catch(err => {
@@ -97,22 +97,22 @@ exports.update = (req, res) => {
 
 // Delete a game with the specified gameId in the request
 exports.delete = (req, res) => {
-    Game.findByIdAndRemove(req.params.gameId)
+    Game.findOneAndDelete({ address: { $eq: req.params.gameId }})
     .then(game => {
         if(!game) {
             return res.status(404).send({
-                message: "Game not found with id " + req.params.gameId
+                message: "Game not found with address " + req.params.gameId
             });
         }
         res.send({message: "Game deleted successfully!"});
     }).catch(err => {
         if(err.kind === 'ObjectId' || err.name === 'NotFound') {
             return res.status(404).send({
-                message: "Game not found with id " + req.params.gameId
+                message: "Game not found with address " + req.params.gameId
             });                
         }
         return res.status(500).send({
-            message: "Could not delete game with id " + req.params.gameId
+            message: "Could not delete game with address " + req.params.gameId
         });
     });
 };

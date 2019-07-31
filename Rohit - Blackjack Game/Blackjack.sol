@@ -586,10 +586,9 @@ contract Blackjack{
         }
     }
 
-    function withdraw (uint256 _amount) public {
+    function withdraw (uint256 _amount) public notDealer(){
         if (
-            !(msg.sender == house ||
-            msg.sender == playerNums[1] ||
+            !(msg.sender == playerNums[1] ||
             msg.sender == playerNums[2] ||
             msg.sender == playerNums[3] ||
             msg.sender == playerNums[4]) ||
@@ -615,6 +614,11 @@ contract Blackjack{
                 delete playerNums[i];
             }
         }
+    }
+
+    function end () public onlyDealer() {
+        require (state == GameState.Finished, "You can't leave during the game!");
+        selfdestruct(msg.sender);
     }
 
 //============================================The following functions are for testing purposes only. They will be removed on final build============================================\\

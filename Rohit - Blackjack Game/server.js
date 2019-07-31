@@ -45,9 +45,9 @@ app.get('/bundle.js', (req, res) => {
     res.sendFile(path.join(__dirname, '/bundle.js'));
 });
 
-app.get('/bundle.js', (req, res) => {
+/*app.get('/bundle.js', (req, res) => {
     res.sendFile(path.join(__dirname, './CanvasInput-master/CanvasInput.js'));
-});
+});*/
 
 app.get('/bg.jpg', (req, res) => {
     res.sendFile(path.join(__dirname, '/bg.jpg'));

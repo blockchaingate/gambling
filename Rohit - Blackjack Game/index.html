@@ -23,7 +23,7 @@
 
     <!-- Define and load in required functions -->
     <script src="bundle.js"></script>
-    <script src="CanvasInput-master/CanvasInput.js"></script>
+    <!--<script src="CanvasInput-master/CanvasInput.js"></script>-->
     <script type="text/javascript">
       window.addEventListener("load", () =>{
         
@@ -69,8 +69,6 @@
           ctx.canvas.width  = w;
           ctx.canvas.height = h;
           ctx.translate(w/2,h/2);
-          joinButton.y = -h/3 + 40;
-          createButton.y = -h/3 + 40;
           draw();
         }
 
@@ -80,8 +78,8 @@
             if (
               event.x > buttons[index].x + w/2 && 
               event.x < buttons[index].x  + buttons[index].width + w/2 &&
-              event.y > buttons[index].y + h/2 && 
-              event.y < buttons[index].y + buttons[index].height + h/2
+              event.y > -h/3 + buttons[index].y + h/2 && 
+              event.y < -h/3 + buttons[index].y + buttons[index].height + h/2
               ) {
               // Executes if button was clicked
               buttons[index].func(buttons[index]);
@@ -101,7 +99,7 @@
                   
         // Function to make create and join game buttons
         function makeCreateJoinButtons () {
-          joinButton = addButton(10, -200, 200, 75,"#4CAF50","white","Create Game",() => {
+          joinButton = addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
             alert('Game Created!');
             makeContract();
             arrRemove(buttons, joinButton);
@@ -109,15 +107,16 @@
             makeTestButton();
           })
 
-          createButton = addButton(-210,-200,200,75,"#4CAF50","white","Join Game",() => {
+          createButton = addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game",() => {
             alert('Button was clicked!');
             arrRemove(buttons, joinButton);
             arrRemove(buttons, createButton);
+            getGames();
             makeTestButton();
           })
         }
         function makeTestButton () {
-          testButton = addButton(-100,-200,200,75,"#4CAF50","white","test",() => {
+          testButton = addButton(-100, 40, 200, 75, "#4CAF50","white","test",() => {
             alert('Button was clicked!');
             arrRemove(buttons, testButton);
             makeCreateJoinButtons() ;
@@ -137,13 +136,13 @@
           // Render buttons
           for (let index = 0; index < buttons.length; index++) {
             ctx.fillStyle = buttons[index].buttonColour;
-            ctx.fillRect(buttons[index].x, buttons[index].y, buttons[index].width, buttons[index].height);
+            ctx.fillRect(buttons[index].x, -h/3 + buttons[index].y, buttons[index].width, buttons[index].height);
             let fontSize = Math.min(buttons[index].width*2/buttons[index].text.length,buttons[index].height)*0.9;
             ctx.font = fontSize + "px Balthazar";
             ctx.fillStyle = buttons[index].textColour;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(buttons[index].text, buttons[index].x + buttons[index].width/2, buttons[index].y + buttons[index].height/2); 
+            ctx.fillText(buttons[index].text, buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height/2); 
           }
         }
         
