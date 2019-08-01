@@ -2,6 +2,8 @@ pragma solidity 0.5.10;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
+|*| (+) Add timer for self destruct                      |*|
+|*| (+) Add timers for VARIOUS phases**                  |*|
 |*| (+) Fix playerCount indexes                          |*|
 |*| (+) Add tons of error trapping                       |*|
 |*|     (such as int overflowand underflow)              |*|

@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Blackjack</title>
+    <link rel="shortcut icon" href="favicon.ico" >
     
     <!-- style the webpage -->
     <style> 
@@ -31,11 +32,15 @@
         let canvas = document.getElementById("myCanvas");
         let ctx = canvas.getContext("2d");
 
+        let drawer = [];
         let buttons = [];
         let joinButton, createButton, testButton;
         let w,h;
+
+				let contract;
+				let games = [];
         let privateKey;
-        
+              
         // Function to remove an element from an array
         function arrRemove(arr,element) {
           let index = arr.indexOf(element);
@@ -82,7 +87,7 @@
               event.y < -h/3 + buttons[index].y + buttons[index].height + h/2
               ) {
               // Executes if button was clicked
-              buttons[index].func(buttons[index]);
+              buttons[index].func();
               break;
             }
           }
@@ -96,53 +101,78 @@
           alert(privateKey);
           document.getElementById("Show Key").remove();
         }
-                  
+        
+        function drawTitle () {
+          return function () {
+            // Draw Title
+            ctx.clearRect(-w/2,-h/2,w,h)
+            ctx.font = "50px Algerian";
+            ctx.fillStyle = "rgb(255,223,0)";
+            ctx.textAlign = "center";
+            ctx.fillText("Blackjack", 0, -h/3); 
+          }
+        }
+        drawer.push(drawTitle());
+
+        function drawButtons () {
+          return function () {           
+            // Render buttons
+            for (let index = 0; index < buttons.length; index++) {
+              ctx.fillStyle = buttons[index].buttonColour;
+              ctx.fillRect(buttons[index].x, -h/3 + buttons[index].y, buttons[index].width, buttons[index].height);
+              let fontSize = Math.min(buttons[index].width*2/buttons[index].text.length,buttons[index].height)*0.9;
+							ctx.font = fontSize + "px Balthazar";
+              ctx.fillStyle = buttons[index].textColour;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(buttons[index].text, buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height/2); 
+            }
+          }
+        }
+        drawer.push(drawButtons());
+
         // Function to make create and join game buttons
         function makeCreateJoinButtons () {
-          joinButton = addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
+          createButton = addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
             alert('Game Created!');
             makeContract();
-            arrRemove(buttons, joinButton);
-            arrRemove(buttons, createButton);
-            makeTestButton();
+            //arrRemove(buttons, joinButton);
+						//arrRemove(buttons, createButton);
+						buttons = [];
+            makeBackButton();
           })
 
-          createButton = addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game",() => {
+          joinButton = addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game", async () => {
             alert('Button was clicked!');
-            arrRemove(buttons, joinButton);
-            arrRemove(buttons, createButton);
-            getGames();
-            makeTestButton();
+            //arrRemove(buttons, joinButton);
+						//arrRemove(buttons, createButton);
+						buttons = [];
+						games =	await getGames();
+						console.log (games);
+						console.log (games.length);
+
+						for (let i = 0; i < games.length; i++) {
+							addButton(-210, 40*(i+1), 100, 32.5, "#4CAF50","white",(games[i].minBet/Math.pow(10,18)).toString(),() => {
+								buttons = [];
+							});
+						}
+						makeBackButton();
           })
         }
-        function makeTestButton () {
-          testButton = addButton(-100, 40, 200, 75, "#4CAF50","white","test",() => {
-            alert('Button was clicked!');
-            arrRemove(buttons, testButton);
-            makeCreateJoinButtons() ;
+
+        function makeBackButton () {
+          testButton = addButton(-100, 40, 200, 75, "#4CAF50","white","back",() => {
+						alert('Going back...');
+						buttons = [];
+            //arrRemove(buttons, testButton);
+						makeCreateJoinButtons();
           })
         }
 
         // Draw all elements dynamic to window size
         function draw() {
-          
-          // Draw Title
-          ctx.clearRect(-w/2,-h/2,w,h)
-          ctx.font = "50px Algerian";
-          ctx.fillStyle = "rgb(255,223,0)";
-          ctx.textAlign = "center";
-          ctx.fillText("Blackjack", 0, -h/3); 
-          
-          // Render buttons
-          for (let index = 0; index < buttons.length; index++) {
-            ctx.fillStyle = buttons[index].buttonColour;
-            ctx.fillRect(buttons[index].x, -h/3 + buttons[index].y, buttons[index].width, buttons[index].height);
-            let fontSize = Math.min(buttons[index].width*2/buttons[index].text.length,buttons[index].height)*0.9;
-            ctx.font = fontSize + "px Balthazar";
-            ctx.fillStyle = buttons[index].textColour;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(buttons[index].text, buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height/2); 
+          for (let i = 0; i < drawer.length; i++){
+            drawer[i]();
           }
         }
         
@@ -167,29 +197,3 @@
     </script>
   </body>
 </html>
-
-
-
-<!--
-<!doctype html>
-<html>
-  
-  <body class = "bg">
-    <div class="container">
-      <h2 style="color:yellow; font-size: 50px; text-align: center">Blackjack</h2>
-    </div>
-    <input class = "button" id="Run Game" type="button" value="Run Game" onclick="runGame();" />
-    <br /><br />
-    <input class = "button" id="Delete Entries" type="button" value="Delete Entries" onclick="remove();" />
-    <br /><br />
-    <form name="myform" action="javascript:setPrivateKey(privateKeyField.value)" style="text-align: center">  
-      <input type="text" name="privateKeyField" id="privateKeyField" maxlength="64"> 
-      <input type="submit" name="Submit" value="Update"/>
-    </form>
-    <br /><br />
-    <input class = "button" id="Show Key" type="button" value="Show Key" onclick="showKey();" />
-    <br /><br />
-    <input class = "button" id="Create Game" type="button" value="Create Game" onclick="makeContract();" />
-  </body>
-</html>
--->

@@ -160,13 +160,17 @@ async function remove(contract) {
 	})
 }
 
-async function getGames() {
-	await request('http://localhost:3000/games', { json: true }, (err, res, body) => {
-		if (err) { return console.log(err); }
-		for (let i = 0; i < body.length; i++)
-		{
-			console.log(body[i].address);
-		}
+function getGames() {
+	let arr = [];
+	return new Promise(function(resolve,reject) {
+		request('http://localhost:3000/games', { json: true }, (err, res, body) => {
+			if (err) { return console.log(err); }
+			for (let i = 0; i < body.length; i++)
+			{
+				arr.push({address: body[i].address, minBet: body[i].minBet, maxBet: body[i].maxBet});
+			}
+			resolve(arr);
+		});
 	});
 }
 
@@ -182,10 +186,10 @@ function makeEventListener(contract) {
 }
 
 
-/*window.runGame = runGame;
+//window.runGame = runGame;
 window.makeContract = makeContract;
+window.getGames = getGames;
 window.remove = remove;
-window.getGames = getGames;*/
 
 async function runGameWithEventListeners(){
 	let contract = await makeContract();
@@ -193,7 +197,7 @@ async function runGameWithEventListeners(){
 	makeEventListener(contract);
 }
 
-runGameWithEventListeners();
+//runGameWithEventListeners();
 //runGame();
 
 

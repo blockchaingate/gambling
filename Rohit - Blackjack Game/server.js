@@ -53,6 +53,10 @@ app.get('/bg.jpg', (req, res) => {
     res.sendFile(path.join(__dirname, '/bg.jpg'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, '/favicon.ico'));
+});
+
 // Require Games routes
 require('./app/routes/game.routes.js')(app);
 
