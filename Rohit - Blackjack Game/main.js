@@ -76,6 +76,7 @@ async function makeContract() {
 		console.log(body);
 	  }
 	);
+	await contract.methods.newGame().send({from: ownerKey});
 	return contract;
 }
 
@@ -185,11 +186,15 @@ function makeEventListener(contract) {
 	});
 }
 
-
 //window.runGame = runGame;
+window.Web3 = Web3;
+window.bj = bj;
+window.web3 = web3;
+window.cBlackjack = cBlackjack;
 window.makeContract = makeContract;
 window.getGames = getGames;
 window.remove = remove;
+
 
 async function runGameWithEventListeners(){
 	let contract = await makeContract();
@@ -199,9 +204,6 @@ async function runGameWithEventListeners(){
 
 //runGameWithEventListeners();
 //runGame();
-
-
-
 
 //=====================================================================================Temp code=====================================================================================\\
 
