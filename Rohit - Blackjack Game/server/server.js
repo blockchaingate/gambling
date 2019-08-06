@@ -37,20 +37,21 @@ mongoose.connect(dbConfig.url, {
 // define a simple route
 app.get('/', (req, res) => {
     //console.log(path.join(__dirname, '/index.html'));
-    res.sendFile(path.join(__dirname, '../index.html'));
+    res.sendFile(path.join(__dirname, '../client/webpage/index.html'));
     //res.json({"message": "~Blackjack~"});
 });
 
 app.get('/api-web.js', (req, res) => {
-    res.sendFile(path.join(__dirname, '../api-web.js'));
+    res.sendFile(path.join(__dirname, '../api/api-web.js'));
 });
 
 app.get('/client-web.js', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client-web.js'));
+    res.sendFile(path.join(__dirname, '../client/webpage/client-web.js'));
 });
-/*app.get('/bundle.js', (req, res) => {
-    res.sendFile(path.join(__dirname, './CanvasInput-master/CanvasInput.js'));
-});*/
+
+app.get('/CanvasInput.js', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/webpage/CanvasInput-master/CanvasInput.js'));
+});
 
 app.get('/bg.jpg', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/images/bg.jpg'));

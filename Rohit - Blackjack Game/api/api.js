@@ -2,12 +2,11 @@
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (-) Auto create hashs using large random numbers     |*|
-|*| (-) Rename to api.js							     |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
 const Web3 = require("web3");
-const bj = require("./Blackjack.js");
+const bj = require("./smart contract/Blackjack.js/index.js");
 const request = require('request');
 // Probably dont need --> converting from testnet to real //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
 let web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:7545"));

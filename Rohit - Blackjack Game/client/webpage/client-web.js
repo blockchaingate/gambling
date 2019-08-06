@@ -1,13 +1,7 @@
-/*|======================To-do list======================|*\
-|*|                                                      |*|
-|*| (-) Remove overlapping dependencies                  |*| 
-|*|                                                      |*|
-\*|======================================================|*/
-
 window.addEventListener("load", () =>{
         
     // Set up canvas
-    let canvas = document.getElementById("myCanvas");
+    let canvas = document.getElementById("canvas");
     let ctx = canvas.getContext("2d");
 
     let drawer = [];
@@ -20,6 +14,8 @@ window.addEventListener("load", () =>{
     let games = [];
     let acc;
     let privateKey;
+
+    let input;
           
     // Function to remove an element from an array
     function arrRemove(arr,element) {
@@ -72,56 +68,58 @@ window.addEventListener("load", () =>{
             }
         }
     }       
-
-    function setPrivateKey(txt) {
-      privateKey = txt;
-    }
-
-    function showKey() {
-      alert(privateKey);
-      document.getElementById("Show Key").remove();
-    }
     
     function drawTitle () {
-        return function () {
-            // Draw Title
-            ctx.clearRect(-w/2,-h/2,w,h)
-            ctx.font = "50px Algerian";
-            ctx.fillStyle = "rgb(255,223,0)";
-            ctx.textAlign = "center";
-            ctx.fillText("Blackjack", 0, -h/3); 
-        }
+        // Draw Title
+        ctx.clearRect(-w/2,-h/2,w,h)
+        ctx.font = "50px Algerian";
+        ctx.fillStyle = "rgb(255,223,0)";
+        ctx.textAlign = "center";
+        ctx.fillText("Blackjack", 0, -h/3); 
     }
-    drawer.push(drawTitle());
 
     function drawButtons () {
-        return function () {           
-            // Render buttons
-            for (let index = 0; index < buttons.length; index++) {
-                ctx.fillStyle = buttons[index].buttonColour;
-                ctx.fillRect(buttons[index].x, -h/3 + buttons[index].y, buttons[index].width, buttons[index].height);
+        for (let index = 0; index < buttons.length; index++) {
+            ctx.fillStyle = buttons[index].buttonColour;
+            ctx.fillRect(buttons[index].x, -h/3 + buttons[index].y, buttons[index].width, buttons[index].height);
 
-                let regex = /\n/gi, result, indices = [];
-                while ( (result = regex.exec(buttons[index].text)) ) {
-                    indices.push(result.index);
-                }
-                let lines = buttons[index].text.split('\n');
-                let maxWidth = 0;
-                for (let i = 0; i < lines.length; i++) {
-                    maxWidth = Math.max(maxWidth,lines[i].length);
-                }
-                let fontSize = Math.min(buttons[index].width*2/maxWidth,buttons[index].height/(1+indices.length))*0.9;                   
-                ctx.font = fontSize + "px Balthazar";
-                ctx.fillStyle = buttons[index].textColour;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                
-                for (let  i = 0; i < lines.length; i++)
-                    ctx.fillText(lines[i], buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height*((1+i)/(2+indices.length)));                 
+            //find indices of \n (new lines)
+            let regex = /\n/gi, result, indices = [];
+            while ( (result = regex.exec(buttons[index].text)) ) {
+                indices.push(result.index);
+            }
+
+            //Split text by newline
+            let lines = buttons[index].text.split('\n');
+
+            //Specify max width for text
+            let maxWidth = 0;
+            for (let i = 0; i < lines.length; i++) {
+                maxWidth = Math.max(maxWidth,lines[i].length);
+            }
+
+            //Format text
+            let fontSize = Math.min(buttons[index].width*2/maxWidth,buttons[index].height/(1+indices.length))*0.9;                   
+            ctx.font = fontSize + "px Balthazar";
+            ctx.fillStyle = buttons[index].textColour;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            //Output text by specified line
+            for (let  i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height*((1+i)/(2+indices.length)));
             }
         }
     }
-    drawer.push(drawButtons());
+
+    function loginScreen(){
+        input = new CanvasInput({
+            canvas: document.getElementById("canvas"),
+            x: -85,
+            y: 135
+        });    
+        drawer.push(()=>{input.render();});
+    }
 
     // Function to make create and join game buttons
     function makeCreateJoinButtons () {
@@ -143,6 +141,7 @@ window.addEventListener("load", () =>{
         makeBackButton();
       })
     }
+
     async function makeGamesButtons () {
         games =	await getGames();
         for (let i = 0; i < games.length; i++) {
@@ -182,8 +181,19 @@ window.addEventListener("load", () =>{
     }
     requestAnimationFrame(step);
 
-    makeCreateJoinButtons();
-    resizeCanvas();
+    //Add event listeners
     window.addEventListener('resize', resizeCanvas, false);
     canvas.addEventListener('click', checkClicks);
+
+    //Set up drawers
+    drawer.push(drawTitle);
+    drawer.push(drawButtons);
+
+    //Set up screen
+    resizeCanvas();
+
+    //Start with login screen
+    loginScreen();
+    makeCreateJoinButtons();
+    
   });
