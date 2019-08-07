@@ -6,10 +6,9 @@ window.addEventListener("load", () =>{
 
     let drawer = [];
     let buttons = [];
-    let joinButton, createButton, testButton;
+    //let joinButton, createButton, testButton;
     let w,h;
 
-    let address;
     let contract;
     let games = [];
     let acc;
@@ -38,9 +37,8 @@ window.addEventListener("load", () =>{
             text: _text,
             func: _func
         };
-        //button.func = _func.bind(button);
         buttons.push(button);
-        return button;
+        //return button;
     }
 
     // Resize canvas event listener function
@@ -72,10 +70,10 @@ window.addEventListener("load", () =>{
     function drawTitle () {
         // Draw Title
         ctx.clearRect(-w/2,-h/2,w,h)
-        ctx.font = "50px Algerian";
+        ctx.font = "100px Algerian";
         ctx.fillStyle = "rgb(255,223,0)";
         ctx.textAlign = "center";
-        ctx.fillText("Blackjack", 0, -h/3); 
+        ctx.fillText("Blackjack", 0, -h/2.5); 
     }
 
     function drawButtons () {
@@ -99,7 +97,7 @@ window.addEventListener("load", () =>{
             }
 
             //Format text
-            let fontSize = Math.min(buttons[index].width*2/maxWidth,buttons[index].height/(1+indices.length))*0.9;                   
+            let fontSize = Math.min(buttons[index].width*2.3/maxWidth,buttons[index].height/(1+indices.length))*0.9;                   
             ctx.font = fontSize + "px Balthazar";
             ctx.fillStyle = buttons[index].textColour;
             ctx.textAlign = "center";
@@ -115,31 +113,56 @@ window.addEventListener("load", () =>{
     function loginScreen(){
         input = new CanvasInput({
             canvas: document.getElementById("canvas"),
-            x: -85,
-            y: 135
-        });    
-        drawer.push(()=>{input.render();});
+            x: -250,
+            y: 135,
+            width: 480,
+            onsubmit: ()=> {
+                privateKey = "0x" + input.value();
+                console.log(privateKey);
+                input.destroy();
+                drawer.pop();
+                menuScreen();
+            }
+            
+        });
+        drawer.push(()=>{
+            ctx.font = 40 + "px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Please enter your private key", 0, -h/3 + 70 + 25);
+            input.render();
+        });
     }
 
     // Function to make create and join game buttons
-    function makeCreateJoinButtons () {
-        createButton = addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
+    function menuScreen () {
+        /*createButton =*/ addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
             alert('Game Created!');
             makeContract();
             //arrRemove(buttons, joinButton);
             //arrRemove(buttons, createButton);
             buttons = [];
             makeBackButton();
-        })
+        });
 
-      joinButton = addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game", () => {
-        alert('Button was clicked!');
-        //arrRemove(buttons, joinButton);
-        //arrRemove(buttons, createButton);
-        buttons = [];
-        makeGamesButtons();
-        makeBackButton();
-      })
+        /*joinButton =*/ addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game", () => {
+            alert('Button was clicked!');
+            //arrRemove(buttons, joinButton);
+            //arrRemove(buttons, createButton);
+            buttons = [];
+            makeGamesButtons();
+            makeBackButton();
+        });
+    }
+
+    function makeBackButton () {
+        /*testButton =*/ addButton(110, 40, 200, 75, "#4CAF50","white","back",() => {
+            alert('Going back...');
+            buttons = [];
+            //arrRemove(buttons, testButton);
+            menuScreen();
+        });
     }
 
     async function makeGamesButtons () {
@@ -147,24 +170,39 @@ window.addEventListener("load", () =>{
         for (let i = 0; i < games.length; i++) {
             let colShift = (i >= 5 ? 210 : 0), rowCountShift = (i >= 5 ? 5 : 0); 
             addButton(-310+colShift, 85*(i+1-rowCountShift)-45, 200, 75, "#85217e","white","Min Bet: "+ (games[i].minBet/Math.pow(10,18)).toString()+" Ether\nMax Bet: " + (games[i].maxBet/Math.pow(10,18)).toString()+ " Ether",async () => {
-                privateKey = '0x5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e';
                 acc = web3.eth.accounts.privateKeyToAccount(privateKey);
                 contract = await new web3.eth.Contract(JSON.parse(cBlackjack.abi), games[i].address, {
                     gasLimit: 6721975,
                     gasPrice: 1
                 });
-                await contract.methods.joinGame().send({from: acc.address, value: 2 * Math.pow(10,18)});
+                buttons = [];
+                betScreen();
             });
         }
     }
 
-    function makeBackButton () {
-        testButton = addButton(110, 40, 200, 75, "#4CAF50","white","back",() => {
-            alert('Going back...');
-            buttons = [];
-            //arrRemove(buttons, testButton);
-            makeCreateJoinButtons();
-        })
+    function betScreen() {
+        input = new CanvasInput({
+            canvas: document.getElementById("canvas"),
+            x: -250,
+            y: 135,
+            width: 480,
+            onsubmit: async ()=> {
+                console.log(input.value() * Math.pow(10,18));
+                await contract.methods.joinGame().send({from: acc.address, value: input.value() * Math.pow(10,18)});
+                input.destroy();
+                drawer.pop();
+            }
+            
+        });
+        drawer.push(()=>{
+            ctx.font = 40 + "px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Please enter your bet", 0, -h/3 + 70 + 25);
+            input.render();
+        });
     }
 
     // Draw all elements dynamic to window size
@@ -194,6 +232,5 @@ window.addEventListener("load", () =>{
 
     //Start with login screen
     loginScreen();
-    makeCreateJoinButtons();
     
   });

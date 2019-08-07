@@ -210,7 +210,7 @@ contract Blackjack{
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
-        //require(msg.value / 2 >= minBet,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size)"); //Make money lower or dynamic later
+        require(msg.value >= minBet * 2,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size)");
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;

@@ -19,7 +19,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // Configuring the database
-const dbConfig = require('./config/database.config.js');
+const dbConfig = require('./config/database_config.js');
 const mongoose = require('mongoose');
 
 mongoose.Promise = global.Promise;
@@ -49,8 +49,8 @@ app.get('/client-web.js', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/webpage/client-web.js'));
 });
 
-app.get('/CanvasInput.js', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/webpage/CanvasInput-master/CanvasInput.js'));
+app.get('/canvas_text_input.js', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/webpage/canvas_text_input.js'));
 });
 
 app.get('/bg.jpg', (req, res) => {
@@ -62,7 +62,7 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 // Require Games routes
-require('./app/routes/game.routes.js')(app);
+require('./app/routes/game_routes.js')(app);
 
 // listen for requests
 app.listen(3000, () => {

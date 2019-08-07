@@ -6,7 +6,7 @@
 \*|======================================================|*/
 
 const Web3 = require("web3");
-const bj = require("./smart contract/Blackjack.js/index.js");
+const bj = require("../smart contract/blackjack.js");
 const request = require('request');
 // Probably dont need --> converting from testnet to real //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
 let web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:7545"));
@@ -36,7 +36,7 @@ const client4Key = acc[4].address;
 //console.time("Time taken");
 async function runGame(contract) {
 	//let contract = await makeContract();
-	await contract.methods.newGame().send({from: ownerKey});
+	//await contract.methods.newGame().send({from: ownerKey});
 	await joinGame(contract);
 	await createRandom(contract);
 	await showInitialCards(contract);
