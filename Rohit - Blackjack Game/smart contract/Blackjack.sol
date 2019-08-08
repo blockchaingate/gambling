@@ -67,7 +67,7 @@ contract Blackjack{
     address[] target;
 
     constructor(uint256 _minBet, uint256 _maxBet) public {
-        require (_maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid bet params");
+        require (_maxBet >= 1 ether && _maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid bet params");
         minBet = _minBet;
         maxBet = _maxBet;
         house = msg.sender;

@@ -12,7 +12,6 @@
   // create a buffer that stores all inputs so that tabbing
   // between them is made possible.
   var inputs = [];
-  let mm,md,mu;
   // initialize the Canvas Input
   var CanvasInput = window.CanvasInput = function(o) {
     var self = this;
@@ -60,7 +59,6 @@
     self._hasFocus = false;
     self._selection = [0, 0];
     self._wasOver = false;
-
     // parse box shadow
     self.boxShadow(self._boxShadow, true);
 
@@ -92,25 +90,25 @@
     } else {
       self._backgroundColor = o.backgroundColor || '#fff';
     }
-    mm = function (e) {
+    self.mm = function (e) {
       e = e || window.event;
       self.mousemove(e, self);
     }
   
-    md = function (e) {
+    self.md = function (e) {
       e = e || window.event;
       self.mousedown(e, self);
     }
   
-    mu = function (e) {
+    self.mu = function (e) {
       e = e || window.event;
       self.mouseup(e, self);
     }
     // setup main canvas events
     if (self._canvas) {
-      self._canvas.addEventListener('mousemove', mm, false);
-      self._canvas.addEventListener('mousedown', md, false);
-      self._canvas.addEventListener('mouseup', mu, false);
+      self._canvas.addEventListener('mousemove', self.mm, false);
+      self._canvas.addEventListener('mousedown', self.md, false);
+      self._canvas.addEventListener('mouseup', self.mu, false);
     }
 
     // setup a global mouseup to blur the input outside of the canvas
@@ -1196,7 +1194,6 @@
     destroy: function() {
       var self = this;
       
-
       // pull from the inputs array
       var index = inputs.indexOf(self);
       if (index != -1) {
@@ -1217,9 +1214,9 @@
       self._renderCtx = null;
       
       //Remove event listeners
-      self._canvas.removeEventListener('mousemove', mm, false);
-      self._canvas.removeEventListener('mousedown', md, false);
-      self._canvas.removeEventListener('mouseup', mu, false);
+      self._canvas.removeEventListener('mousemove', self.mm, false);
+      self._canvas.removeEventListener('mousedown', self.md, false);
+      self._canvas.removeEventListener('mouseup', self.mu, false);
       self._canvas.style.cursor = 'default';
 
     },

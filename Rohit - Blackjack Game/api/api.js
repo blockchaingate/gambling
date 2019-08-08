@@ -34,8 +34,8 @@ const client3Key = acc[3].address;
 const client4Key = acc[4].address;
 
 //console.time("Time taken");
-async function runGame(contract) {
-	//let contract = await makeContract();
+async function runGame() {
+	let contract = await makeContract(ownerKey,Math.pow(10,18).toString(10),Math.pow(10,19).toString(10));
 	//await contract.methods.newGame().send({from: ownerKey});
 	await joinGame(contract);
 	await createRandom(contract);
@@ -54,21 +54,21 @@ async function runGame(contract) {
 	//await console.timeEnd("Time taken");
 }
 
-async function makeContract() { 
+async function makeContract(address,minBet,maxBet) { 
 	let contract = await Blackjack
 	.deploy({
-		"arguments": [Math.pow(10,18).toString(10),Math.pow(10,19).toString(10)],
+		"arguments": [minBet,maxBet],
 	})
 	.send({
-		from: ownerKey
+		from: address
 	})
 	await request({
 		url: 'http://localhost:3000/games',
 		method: 'POST',
 		json: {
 		  address: contract.options.address,
-		  minBet: Math.pow(10,18).toString(10),
-		  maxBet: Math.pow(10,19).toString(10)
+		  minBet: minBet,
+		  maxBet: maxBet
 		}
 	  }, (err, res, body) => {
 		if (err) { return console.log(err); }
@@ -117,23 +117,23 @@ async function showInitialCards(contract) {
 		.then(console.log);
 }
 
-async function hit(contract,_clientKey) {
-	await contract.methods.submitHashRequest('42450096').send({from: _clientKey});
+async function hit(contract,clientKey) {
+	await contract.methods.submitHashRequest('42450096').send({from: clientKey});
 	await contract.methods.submitHashResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.numRequest('42450096').send({from: _clientKey});
+	await contract.methods.numRequest('42450096').send({from: clientKey});
 	await contract.methods.numResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.hit().send({from: _clientKey});
-	await contract.methods.showCards().call({from: _clientKey})
+	await contract.methods.hit().send({from: clientKey});
+	await contract.methods.showCards().call({from: clientKey})
 		.then(console.log);
-	await contract.methods.showSplitCards().call({from: _clientKey})
+	await contract.methods.showSplitCards().call({from: clientKey})
 		.then(console.log);
 }
 
-async function split(contract,_clientKey) {
-	await contract.methods.split().send({from: _clientKey});
-	await contract.methods.showCards().call({from: _clientKey})
+async function split(contract,clientKey) {
+	await contract.methods.split().send({from: clientKey});
+	await contract.methods.showCards().call({from: clientKey})
 		.then(console.log);
-	await contract.methods.showSplitCards().call({from: _clientKey})
+	await contract.methods.showSplitCards().call({from: clientKey})
 		.then(console.log);
 } 
 
@@ -144,9 +144,9 @@ async function withdraw(contract) {
 	await contract.methods.end().send({from: ownerKey});
 }
 
-async function timeBurn(contract,_clientKey) {
+async function timeBurn(contract,clientKey) {
 	for (let i = 0; i < 5; i ++) {
-		await contract.methods.doNothing().send({from: _clientKey});
+		await contract.methods.doNothing().send({from: clientKey});
 	}
 } // temp
 
@@ -192,17 +192,10 @@ window.web3 = web3;
 window.cBlackjack = cBlackjack;
 window.makeContract = makeContract;
 window.getGames = getGames;
-window.remove = remove;
+//window.remove = remove;
 
-
-async function runGameWithEventListeners(){
-	let contract = await makeContract();
-	runGame(contract);
-	makeEventListener(contract);
-}
-
-//runGameWithEventListeners();
 //runGame();
+//makeEventListener(contract);
 
 //=====================================================================================Temp code=====================================================================================\\
 

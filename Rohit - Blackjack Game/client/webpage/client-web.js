@@ -111,14 +111,18 @@ window.addEventListener("load", () =>{
     }
 
     function loginScreen(){
+        console.log("e6974be75995c317b182ff6e7b33058e7ba3328354305040a075d544db240886")
+        console.log("5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e")
         input = new CanvasInput({
             canvas: document.getElementById("canvas"),
-            x: -250,
+            x: -265,
             y: 135,
-            width: 480,
+            width: 510,
+            fontSize: 13,
+            fontFamily: "Courier",
             onsubmit: ()=> {
                 privateKey = "0x" + input.value();
-                console.log(privateKey);
+                acc = web3.eth.accounts.privateKeyToAccount(privateKey);
                 input.destroy();
                 drawer.pop();
                 menuScreen();
@@ -126,7 +130,7 @@ window.addEventListener("load", () =>{
             
         });
         drawer.push(()=>{
-            ctx.font = 40 + "px Balthazar";
+            ctx.font = "40px Balthazar";
             ctx.fillStyle = "#7bff00";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -138,12 +142,8 @@ window.addEventListener("load", () =>{
     // Function to make create and join game buttons
     function menuScreen () {
         /*createButton =*/ addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
-            alert('Game Created!');
-            makeContract();
-            //arrRemove(buttons, joinButton);
-            //arrRemove(buttons, createButton);
             buttons = [];
-            makeBackButton();
+            contractCreationScreen();
         });
 
         /*joinButton =*/ addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game", () => {
@@ -151,7 +151,7 @@ window.addEventListener("load", () =>{
             //arrRemove(buttons, joinButton);
             //arrRemove(buttons, createButton);
             buttons = [];
-            makeGamesButtons();
+            gameSelectScreen();
             makeBackButton();
         });
     }
@@ -165,20 +165,81 @@ window.addEventListener("load", () =>{
         });
     }
 
-    async function makeGamesButtons () {
+    function contractCreationScreen () {
+        input = new CanvasInput({
+            canvas: document.getElementById("canvas"),
+            x: -280,
+            y: 125,
+            width: 280     
+        });
+        input2 = new CanvasInput({
+            canvas: document.getElementById("canvas"),
+            x: -280,
+            y: 225,
+            width: 280            
+        });
+        drawer.push(()=>{
+            ctx.font = "40px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Minimum Bet Value", -130, -h/3 + 105);
+            ctx.fillText("Maximum Bet Value", -130, -h/3 + 205);
+            input.render();
+            input2.render();
+        });
+        addButton(80, 150, 200, 75, "#4CAF50","white","Submit",() => {
+            makeContract(acc.address,(input.value()*Math.pow(10,18)).toString(10),(input2.value()*Math.pow(10,18)).toString(10));
+            alert('Game Created!');
+            //arrRemove(buttons, joinButton);
+            //arrRemove(buttons, createButton);
+            buttons = [];
+            input.destroy();
+            input2.destroy();
+            drawer.pop();
+            makeBackButton();
+        })        
+    }
+
+    async function gameSelectScreen () {
         games =	await getGames();
         for (let i = 0; i < games.length; i++) {
             let colShift = (i >= 5 ? 210 : 0), rowCountShift = (i >= 5 ? 5 : 0); 
             addButton(-310+colShift, 85*(i+1-rowCountShift)-45, 200, 75, "#85217e","white","Min Bet: "+ (games[i].minBet/Math.pow(10,18)).toString()+" Ether\nMax Bet: " + (games[i].maxBet/Math.pow(10,18)).toString()+ " Ether",async () => {
-                acc = web3.eth.accounts.privateKeyToAccount(privateKey);
                 contract = await new web3.eth.Contract(JSON.parse(cBlackjack.abi), games[i].address, {
                     gasLimit: 6721975,
                     gasPrice: 1
                 });
                 buttons = [];
-                betScreen();
+                poolScreen();
             });
         }
+    }
+
+    function poolScreen() {
+        input = new CanvasInput({
+            canvas: document.getElementById("canvas"),
+            x: -250,
+            y: 135,
+            width: 480,
+            onsubmit: async ()=> {
+                await contract.methods.joinGame().send({from: acc.address, value: input.value() * Math.pow(10,18)});
+                input.destroy();
+                drawer.pop();
+                betScreen();
+            }
+            
+        });
+        drawer.push(()=>{
+            ctx.font = "40px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Please set a bet threshold in Ether", 0, -h/3 + 85);
+            ctx.font = "20px Balthazar";
+            ctx.fillText("(Some ether will be sent to the contract and will act as your pool)", 0, -h/3 + 115);
+            input.render();
+        });
     }
 
     function betScreen() {
@@ -188,19 +249,18 @@ window.addEventListener("load", () =>{
             y: 135,
             width: 480,
             onsubmit: async ()=> {
-                console.log(input.value() * Math.pow(10,18));
-                await contract.methods.joinGame().send({from: acc.address, value: input.value() * Math.pow(10,18)});
+                await contract.methods.bet((input.value()*Math.pow(10,18)).toString(10)).send({from: acc.address});
                 input.destroy();
                 drawer.pop();
             }
             
         });
         drawer.push(()=>{
-            ctx.font = 40 + "px Balthazar";
+            ctx.font = "40px Balthazar";
             ctx.fillStyle = "#7bff00";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("Please enter your bet", 0, -h/3 + 70 + 25);
+            ctx.fillText("How much do you want to bet?", 0, -h/3 + 95);
             input.render();
         });
     }
