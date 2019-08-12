@@ -1,5 +1,14 @@
+/*|======================To-do list======================|*\
+|*|                                                      |*|
+|*| (-) Make api format uniform for HTML JS              |*|
+|*| (-) Organize (such as move makeBackButton() into     |*|
+|*|     screen functions                                 |*|
+|*| (-) Fix temporary event listener callback hell       |*|
+|*|                                                      |*|
+\*|======================================================|*/
+
 window.addEventListener("load", () =>{
-        
+
     // Set up canvas
     let canvas = document.getElementById("canvas");
     let ctx = canvas.getContext("2d");
@@ -141,7 +150,7 @@ window.addEventListener("load", () =>{
 
     // Function to make create and join game buttons
     function menuScreen () {
-        /*createButton =*/ addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
+        addButton(10, 40, 200, 75, "#4CAF50","white","Create Game",() => {
             buttons = [];
             contractCreationScreen();
         });
@@ -152,14 +161,14 @@ window.addEventListener("load", () =>{
             //arrRemove(buttons, createButton);
             buttons = [];
             gameSelectScreen();
-            makeBackButton();
         });
     }
 
-    function makeBackButton () {
-        /*testButton =*/ addButton(110, 40, 200, 75, "#4CAF50","white","back",() => {
+    function makeBackButton (x,y) {
+        /*testButton =*/ addButton(x, y, 200, 75, "#4CAF50","white","Back",() => {
             alert('Going back...');
             buttons = [];
+            drawer.length = 2;
             //arrRemove(buttons, testButton);
             menuScreen();
         });
@@ -178,6 +187,7 @@ window.addEventListener("load", () =>{
             y: 225,
             width: 280            
         });
+
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
             ctx.fillStyle = "#7bff00";
@@ -188,8 +198,9 @@ window.addEventListener("load", () =>{
             input.render();
             input2.render();
         });
-        addButton(80, 150, 200, 75, "#4CAF50","white","Submit",() => {
-            makeContract(acc.address,(input.value()*Math.pow(10,18)).toString(10),(input2.value()*Math.pow(10,18)).toString(10));
+        makeBackButton(80, 175);
+        addButton(80, 80, 200, 75, "#4CAF50","white","Submit",async () => {
+            contract = await makeContract(acc.address,(input.value()*Math.pow(10,18)).toString(10),(input2.value()*Math.pow(10,18)).toString(10));
             alert('Game Created!');
             //arrRemove(buttons, joinButton);
             //arrRemove(buttons, createButton);
@@ -197,8 +208,25 @@ window.addEventListener("load", () =>{
             input.destroy();
             input2.destroy();
             drawer.pop();
-            makeBackButton();
+            closeGameScreen();
         })        
+    }
+
+    function closeGameScreen() {
+        contract.methods.startTimer().send({from: acc.address}); // Tester code
+        timeBurn(contract,acc.address); //Tester code
+        addButton(80, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
+            await contract.methods.playerCount().call().then(alert); //Replace with event listener
+        });
+        addButton(80, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
+            await contract.methods.closeGame().send({from: acc.address, value: Math.pow(10,19)}); //Make dynamic later
+            alert("Game Closed");
+            await makeEventListener(contract, async ()=> {  
+                await contract.methods.submitNumber('3963456789123455313').send({from: acc.address});
+            });
+            await contract.methods.submitReturnHash('3963456789123455313').send({from: acc.address});
+        });
+        //makeBackButton(80, 210);
     }
 
     async function gameSelectScreen () {
@@ -214,6 +242,7 @@ window.addEventListener("load", () =>{
                 poolScreen();
             });
         }
+        makeBackButton(110, 40);
     }
 
     function poolScreen() {
@@ -252,6 +281,7 @@ window.addEventListener("load", () =>{
                 await contract.methods.bet((input.value()*Math.pow(10,18)).toString(10)).send({from: acc.address});
                 input.destroy();
                 drawer.pop();
+                awaitGameStartScreen();
             }
             
         });
@@ -260,8 +290,35 @@ window.addEventListener("load", () =>{
             ctx.fillStyle = "#7bff00";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("How much do you want to bet?", 0, -h/3 + 95);
+            ctx.fillText("How much ether do you want to bet?", 0, -h/3 + 95);
             input.render();
+        });
+    }
+
+    function awaitGameStartScreen () {
+        makeEventListener(contract, async ()=> {
+            drawer.pop();
+            await contract.methods.submitDeposit().send({from: acc.address, value: 10 * Math.pow(10,18)}); //Make dynamic later
+            await makeEventListener(contract, async ()=> {  
+                await makeEventListener(contract, async () =>{
+                    gameScreen();
+                });
+                await contract.methods.submitNumber('722775529745285120').send({from: acc.address}); //Link with previous random later
+            });
+            await contract.methods.submitReturnHash('722775529745285120').send({from: acc.address}); //Make random later
+            
+        });
+        drawer.push(()=>{
+            ctx.font = "40px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Please wait for the game to start", 0, -h/3 + 95);
+        });
+    }
+
+    function gameScreen() {
+        addButton(80, 40, 200, 75, "#4CAF50","white","Hit",async () => {
         });
     }
 
@@ -293,4 +350,4 @@ window.addEventListener("load", () =>{
     //Start with login screen
     loginScreen();
     
-  });
+});

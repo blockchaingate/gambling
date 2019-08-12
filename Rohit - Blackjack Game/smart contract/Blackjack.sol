@@ -59,7 +59,7 @@ contract Blackjack{
     bool timerStarted;
     mapping(address => Player) public players;
     mapping(uint8 => address) public playerNums;
-    uint8 playerCount;
+    uint8 public playerCount;
     uint256 possibleLoss;
     uint8 taskDone;
     address house;
@@ -81,7 +81,7 @@ contract Blackjack{
     }
 
     modifier isProcessingRandom {
-        require(state == GameState.ProcessingRandom, "Sorry, the hash sumbit window has elapsed.");
+        require(state == GameState.ProcessingRandom, "Sorry, the hash submit window has elapsed.");
         _;
     }
 
@@ -247,7 +247,7 @@ contract Blackjack{
         require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
         require(playerCount >= 1, "Wait until there's atleast one other player!");
         require(timerStarted, "You haven't started the timer yet!");
-        require (block.number > blockNum + 5, "Players still have time to make a move.");
+        require (block.number > blockNum + 5 || taskDone == playerCount, "Players still have time to make a move.");
         kick();
         players[house].pool += msg.value;
         state = GameState.ProcessingRandom;

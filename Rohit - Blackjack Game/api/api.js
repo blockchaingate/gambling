@@ -2,6 +2,9 @@
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (-) Auto create hashs using large random numbers     |*|
+|*| (-) Make api format uniform for HTML JS              |*|
+|*| (-)	Edit function to send rand nums to put in api    |*|
+|*| 	format											 |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -75,7 +78,7 @@ async function makeContract(address,minBet,maxBet) {
 		console.log(body);
 	  }
 	);
-	await contract.methods.newGame().send({from: ownerKey});
+	await contract.methods.newGame().send({from: address});
 	return contract;
 }
 
@@ -99,8 +102,8 @@ async function createRandom(contract) {
 	await contract.methods.submitReturnHash('722775529745285120').send({from: client1Key});
 	await contract.methods.submitReturnHash('388335581365825281').send({from: client2Key});
 	await contract.methods.submitReturnHash('3963456789123455313').send({from: ownerKey});
-	await contract.methods.submitNumber('722775529745285120').send({from: client1Key})
-	await contract.methods.submitNumber('388335581365825281').send({from: client2Key})
+	await contract.methods.submitNumber('722775529745285120').send({from: client1Key});
+	await contract.methods.submitNumber('388335581365825281').send({from: client2Key});
 	await contract.methods.submitNumber('3963456789123455313').send({from: ownerKey});
 }
 
@@ -150,15 +153,26 @@ async function timeBurn(contract,clientKey) {
 	}
 } // temp
 
-async function remove(contract) {
+async function removeOne(contract) {
 	await request({
-		url: 'http://localhost:3000/games/'+contract.options.address,
+		url: 'http://localhost:3000/games/'+contract.options.address+'/',
 		method: 'DELETE'
 	  }, (err, res, body) => {
 		if (err) { return console.log(err); }
 		console.log(body);
 	})
 }
+
+async function removeAll() {
+	await request({
+		url: 'http://localhost:3000/games/',
+		method: 'DELETE'
+	  }, (err, res, body) => {
+		if (err) { return console.log(err); }
+		console.log(body);
+	})
+}
+
 
 function getGames() {
 	let arr = [];
@@ -174,9 +188,20 @@ function getGames() {
 	});
 }
 
-function makeEventListener(contract) {
+function makeEventListener(contract, func) {
 	contract.once('StateChange',
 	/*contract.events.StateChange(*/function (err, event) { //Commented code for unlimited listening
+		if (err) {
+			console.log(err);
+		} else {
+			console.log(event.returnValues.newState);
+			func();
+		}
+	});
+}
+
+function hearAllEvents(contract) {
+	contract.events.StateChange(function (err, event) { //Commented code for unlimited listening
 		if (err) {
 			console.log(err);
 		} else {
@@ -192,7 +217,13 @@ window.web3 = web3;
 window.cBlackjack = cBlackjack;
 window.makeContract = makeContract;
 window.getGames = getGames;
-//window.remove = remove;
+window.timeBurn = timeBurn;
+window.makeEventListener = makeEventListener;
+//window.removeOne = removeOne;
+
+//testing
+window.removeAll = removeAll;
+window.hearAllEvents = hearAllEvents;
 
 //runGame();
 //makeEventListener(contract);
