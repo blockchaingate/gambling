@@ -2,15 +2,17 @@
 /*|======================To-do list======================|*\
 |*|                                                      |*|
 |*| (-) Auto create hashs using large random numbers     |*|
-|*| (-) Make api format uniform for HTML JS              |*|
-|*| (-)	Edit function to send rand nums to put in api    |*|
-|*| 	format											 |*|
+|*|                                                      |*|
+|*|======================================================|*|
+|*|                                                      |*|
+|*| (-) = Current objectives                             |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
 const Web3 = require("web3");
 const bj = require("../smart contract/blackjack.js");
 const request = require('request');
+var randomatic = require("randomatic")
 // Probably dont need --> converting from testnet to real //const web3 = (window.ethereum)? new Web3(window.ethereum) : null;
 let web3 = new Web3(new Web3.providers.WebsocketProvider("ws://localhost:7545"));
 //let web3 = new Web3("http://localhost:7545", null, {});
@@ -30,6 +32,9 @@ for(let key of privateKeys) {
 	//console.log("account " + acc[acc.length - 1].address);
 }
 
+let listener;
+let randNum;
+
 const ownerKey = acc[0].address;
 const client1Key = acc[1].address;
 const client2Key = acc[2].address;
@@ -38,29 +43,42 @@ const client4Key = acc[4].address;
 
 //console.time("Time taken");
 async function runGame() {
-	let contract = await makeContract(ownerKey,Math.pow(10,18).toString(10),Math.pow(10,19).toString(10));
-	//await contract.methods.newGame().send({from: ownerKey});
-	await joinGame(contract);
-	await createRandom(contract);
+	let contract = await makeContract(ownerKey,1,10);
+	await joinGame(contract,client1Key,2);
+	await bet(contract,client1Key,1);
+	await joinGame(contract,client2Key,2);
+	await bet(contract,client2Key,1);
+	await startTimer(contract,ownerKey);
+	await timeBurn(contract,ownerKey);
+	/*await contract.methods.players(client1Key).call()
+		.then(console.log)*/;
+	await automateRand(contract,ownerKey);
+	await closeGame(contract,ownerKey,10);
+	/*await contract.methods.players(client1Key).call()
+		.then(console.log)*/;
+	await automateRand(contract,client1Key);
+	await automateRand(contract,client2Key);
+	await submitDeposit(contract,client1Key,10);
+	await submitDeposit(contract,client2Key,10);
 	await showInitialCards(contract);
 	await split(contract, client1Key);
 	await hit(contract, client1Key);
-	await contract.methods.stand().send({from: client1Key});
-	await contract.methods.transferToSplit().send({from: client1Key});
+	await stand(contract, client1Key);
+	await transferToSplit(contract, client1Key);
 	await hit(contract, client1Key);
-	await contract.methods.stand().send({from: client1Key});
+	await stand(contract, client1Key);
 	await hit(contract, client2Key);
-	await contract.methods.stand().send({from: client2Key});
-	await contract.methods.finalRandProcess().send({from: ownerKey});
-	await createRandom(contract);
+	await stand(contract,client2Key);
+	await finalRandProcess(contract, ownerKey);
 	await withdraw(contract);
+	//listener.unsubscribe();
 	//await console.timeEnd("Time taken");
 }
 
 async function makeContract(address,minBet,maxBet) { 
 	let contract = await Blackjack
 	.deploy({
-		"arguments": [minBet,maxBet],
+		"arguments": [(minBet*Math.pow(10,18)).toString(10),(maxBet*Math.pow(10,18)).toString(10)],
 	})
 	.send({
 		from: address
@@ -82,29 +100,34 @@ async function makeContract(address,minBet,maxBet) {
 	return contract;
 }
 
-async function joinGame(contract) {
-	await contract.methods.joinGame().send({from: client1Key, value: 2 * Math.pow(10,18)});
-	await contract.methods.bet(Math.pow(10,18).toString(10)).send({from: client1Key});
-	await contract.methods.joinGame().send({from: client2Key, value: 2 * Math.pow(10,18)}); 
-	await contract.methods.bet(Math.pow(10,18).toString(10)).send({from: client2Key});
-	await contract.methods.startTimer().send({from: ownerKey});
-	await timeBurn(contract,ownerKey);
-	await contract.methods.players(client1Key).call()
-		/*.then(console.log)*/;
-	await contract.methods.closeGame().send({from: ownerKey, value: 10 * Math.pow(10,18)});
-	await contract.methods.players(client1Key).call()
-		/*.then(console.log)*/;
-	await contract.methods.submitDeposit().send({from: client1Key, value: 10 * Math.pow(10,18)});
-	await contract.methods.submitDeposit().send({from: client2Key, value: 10 * Math.pow(10,18)});
+async function joinGame(contract,address,value){
+	await contract.methods.joinGame().send({from: address, value: value * Math.pow(10,18)});
 }
 
-async function createRandom(contract) {
-	await contract.methods.submitReturnHash('722775529745285120').send({from: client1Key});
-	await contract.methods.submitReturnHash('388335581365825281').send({from: client2Key});
-	await contract.methods.submitReturnHash('3963456789123455313').send({from: ownerKey});
-	await contract.methods.submitNumber('722775529745285120').send({from: client1Key});
-	await contract.methods.submitNumber('388335581365825281').send({from: client2Key});
-	await contract.methods.submitNumber('3963456789123455313').send({from: ownerKey});
+async function bet(contract,address,value){
+	await contract.methods.bet((value*Math.pow(10,18)).toString(10)).send({from: address});
+}
+
+async function startTimer(contract,address) {
+	await contract.methods.startTimer().send({from: address});
+}
+
+async function timeBurn(contract,address) {
+	for (let i = 0; i < 5; i ++) {
+		await contract.methods.doNothing().send({from: address});
+	}
+} // temp
+
+async function closeGame(contract,address,value) {
+	await contract.methods.closeGame().send({from: address, value: value * Math.pow(10,18)}); 
+}
+
+async function submitDeposit(contract,address,value) {
+	do {
+		randNum = randomatic('0',20);
+	} while (randNum.charAt(0)=='0');
+	await contract.methods.submitDeposit().send({from: address, value: value * Math.pow(10,18)});
+	await contract.methods.submitAutoHash(randNum).send({from: address});
 }
 
 async function showInitialCards(contract) {
@@ -120,38 +143,58 @@ async function showInitialCards(contract) {
 		.then(console.log);
 }
 
-async function hit(contract,clientKey) {
-	await contract.methods.submitHashRequest('42450096').send({from: clientKey});
-	await contract.methods.submitHashResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.numRequest('42450096').send({from: clientKey});
+async function hit(contract,address) {
+	await contract.methods.submitAutoHashRequest('42450096').send({from: address});
+	await contract.methods.submitAutoHashResponse('12034602216',0).send({from: ownerKey});
+	await contract.methods.numRequest('42450096').send({from: address});
 	await contract.methods.numResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.hit().send({from: clientKey});
-	await contract.methods.showCards().call({from: clientKey})
+	await contract.methods.hit().send({from: address});
+	await contract.methods.showCards().call({from: address})
 		.then(console.log);
-	await contract.methods.showSplitCards().call({from: clientKey})
+	await contract.methods.showSplitCards().call({from: address})
 		.then(console.log);
 }
 
-async function split(contract,clientKey) {
-	await contract.methods.split().send({from: clientKey});
-	await contract.methods.showCards().call({from: clientKey})
+async function split(contract,address) {
+	await contract.methods.split().send({from: address});
+	await contract.methods.showCards().call({from: address})
 		.then(console.log);
-	await contract.methods.showSplitCards().call({from: clientKey})
+	await contract.methods.showSplitCards().call({from: address})
 		.then(console.log);
 } 
+
+async function stand (contract,address) {
+	await contract.methods.stand().send({from: address});
+}
+
+async function transferToSplit(contract,address){
+	await contract.methods.transferToSplit().send({from: address});
+}
+
+async function finalRandProcess(contract,address){
+	await contract.methods.finalRandProcess().send({from: address});
+}
 
 async function withdraw(contract) {
 	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
 	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
-	await remove(contract);
+	await removeOne(contract);
 	await contract.methods.end().send({from: ownerKey});
 }
 
-async function timeBurn(contract,clientKey) {
-	for (let i = 0; i < 5; i ++) {
-		await contract.methods.doNothing().send({from: clientKey});
-	}
-} // temp
+function getGames() {
+	let arr = [];
+	return new Promise(function(resolve,reject) {
+		request('http://localhost:3000/games', { json: true }, (err, res, body) => {
+			if (err) { return console.log(err); }
+			for (let i = 0; i < body.length; i++)
+			{
+				arr.push({address: body[i].address, minBet: body[i].minBet, maxBet: body[i].maxBet});
+			}
+			resolve(arr);
+		});
+	});
+}
 
 async function removeOne(contract) {
 	await request({
@@ -171,59 +214,86 @@ async function removeAll() {
 		if (err) { return console.log(err); }
 		console.log(body);
 	})
-}
+} //Temp
 
 
-function getGames() {
-	let arr = [];
-	return new Promise(function(resolve,reject) {
-		request('http://localhost:3000/games', { json: true }, (err, res, body) => {
-			if (err) { return console.log(err); }
-			for (let i = 0; i < body.length; i++)
-			{
-				arr.push({address: body[i].address, minBet: body[i].minBet, maxBet: body[i].maxBet});
-			}
-			resolve(arr);
-		});
-	});
-}
-
-function makeEventListener(contract, func) {
-	contract.once('StateChange',
-	/*contract.events.StateChange(*/function (err, event) { //Commented code for unlimited listening
+/*function makeEventListener(contract, eventNum, func) {
+	let singleListener;
+	singleListener = contract.events.StateChange(async function (err, event) {
 		if (err) {
 			console.log(err);
-		} else {
-			console.log(event.returnValues.newState);
-			func();
+		} else if (event.returnValues.newState == 1){
+			do {
+				randNum = randomatic('0',20);
+			} while (randNum.charAt(0)=='0');
+			await contract.methods.submitAutoHash(randNum).send({from: address});
+		} else if (event.returnValues.newState == 2){
+			await contract.methods.submitNumber(randNum).send({from: address});
+		} else if (event.returnValues.newState == 5) {
+			listener.unsubscribe();
+		}
+	});
+}*/
+
+function automateRand(contract,address) {
+	listener = contract.events.StateChange(async function (err, event) {
+		if (err) {
+			console.log(err);
+		} else if (event.returnValues.newState == 1){
+			do {
+		randNum = randomatic('0',20);
+	} while (randNum.charAt(0)=='0');
+			await contract.methods.submitAutoHash(randNum).send({from: address});
+		} else if (event.returnValues.newState == 2){
+			await contract.methods.submitNumber(randNum).send({from: address});
+		} else if (event.returnValues.newState == 5) {
+			listener.unsubscribe();
 		}
 	});
 }
 
-function hearAllEvents(contract) {
-	contract.events.StateChange(function (err, event) { //Commented code for unlimited listening
-		if (err) {
-			console.log(err);
-		} else {
-			console.log(event.returnValues.newState);
-		}
-	});
+async function submitHash (contract,address,num){
+	await contract.methods.submitAutoHash(num).send({from: address});
 }
 
-//window.runGame = runGame;
+async function submitNumber (contract,address,num) {
+	await contract.methods.submitNumber(num).send({from: address});
+}
+
+runGame();
+/*
+// Export libraries
 window.Web3 = Web3;
 window.bj = bj;
 window.web3 = web3;
 window.cBlackjack = cBlackjack;
+
+// Export API methods 
 window.makeContract = makeContract;
-window.getGames = getGames;
+window.joinGame = joinGame;
+window.bet = bet;
+window.startTimer = startTimer;
 window.timeBurn = timeBurn;
+window.closeGame = closeGame;
+window.submitDeposit = submitDeposit;
+window.submitHash = submitHash;
+window.submitNumber = submitNumber;
 window.makeEventListener = makeEventListener;
+window.split = split;
+window.hit = hit;
+window.stand = stand;
+window.transferToSplit = transferToSplit;
+window.finalRandProcess = finalRandProcess;
+window.withdraw = withdraw;
+
+// Export HTML request methods
+window.getGames = getGames;
 //window.removeOne = removeOne;
 
 //testing
 window.removeAll = removeAll;
 window.hearAllEvents = hearAllEvents;
+//window.showInitialCards = showInitialCards;
 
 //runGame();
 //makeEventListener(contract);

@@ -3,7 +3,12 @@
 |*| (-) Make api format uniform for HTML JS              |*|
 |*| (-) Organize (such as move makeBackButton() into     |*|
 |*|     screen functions                                 |*|
-|*| (-) Fix temporary event listener callback hell       |*|
+|*| (+) Fix temporary event listener callback hell       |*|
+|*|                                                      |*|
+|*|======================================================|*|
+|*|                                                      |*|
+|*| (-) = Current objectives                             |*|
+|*| (+) = Will complete after client-side program        |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -200,7 +205,7 @@ window.addEventListener("load", () =>{
         });
         makeBackButton(80, 175);
         addButton(80, 80, 200, 75, "#4CAF50","white","Submit",async () => {
-            contract = await makeContract(acc.address,(input.value()*Math.pow(10,18)).toString(10),(input2.value()*Math.pow(10,18)).toString(10));
+            contract = await makeContract(acc.address,input.value(),input2.value());
             alert('Game Created!');
             //arrRemove(buttons, joinButton);
             //arrRemove(buttons, createButton);
@@ -212,19 +217,22 @@ window.addEventListener("load", () =>{
         })        
     }
 
-    function closeGameScreen() {
-        contract.methods.startTimer().send({from: acc.address}); // Tester code
-        timeBurn(contract,acc.address); //Tester code
+    async function closeGameScreen() {
+        await startTimer(contract,acc.address); // Tester code
+        await timeBurn(contract,acc.address); //Tester code
         addButton(80, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
             await contract.methods.playerCount().call().then(alert); //Replace with event listener
         });
         addButton(80, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
-            await contract.methods.closeGame().send({from: acc.address, value: Math.pow(10,19)}); //Make dynamic later
+            await closeGame(contract,ownerKey,10); //Make dynamic later
             alert("Game Closed");
             await makeEventListener(contract, async ()=> {  
+                await makeEventListener(contract, async () =>{
+                    //add more here
+                });
                 await contract.methods.submitNumber('3963456789123455313').send({from: acc.address});
             });
-            await contract.methods.submitReturnHash('3963456789123455313').send({from: acc.address});
+            await contract.methods.submitAutoHash('3963456789123455313').send({from: acc.address});
         });
         //makeBackButton(80, 210);
     }
@@ -252,7 +260,7 @@ window.addEventListener("load", () =>{
             y: 135,
             width: 480,
             onsubmit: async ()=> {
-                await contract.methods.joinGame().send({from: acc.address, value: input.value() * Math.pow(10,18)});
+                await joinGame(contract,acc.address,input.value());
                 input.destroy();
                 drawer.pop();
                 betScreen();
@@ -278,7 +286,7 @@ window.addEventListener("load", () =>{
             y: 135,
             width: 480,
             onsubmit: async ()=> {
-                await contract.methods.bet((input.value()*Math.pow(10,18)).toString(10)).send({from: acc.address});
+                await bet(contract,acc.address,input.value());
                 input.destroy();
                 drawer.pop();
                 awaitGameStartScreen();
@@ -298,14 +306,14 @@ window.addEventListener("load", () =>{
     function awaitGameStartScreen () {
         makeEventListener(contract, async ()=> {
             drawer.pop();
-            await contract.methods.submitDeposit().send({from: acc.address, value: 10 * Math.pow(10,18)}); //Make dynamic later
+            await submitDeposit(contract, acc.address, 10); //Make dynamic later
             await makeEventListener(contract, async ()=> {  
                 await makeEventListener(contract, async () =>{
                     gameScreen();
                 });
                 await contract.methods.submitNumber('722775529745285120').send({from: acc.address}); //Link with previous random later
             });
-            await contract.methods.submitReturnHash('722775529745285120').send({from: acc.address}); //Make random later
+            await contract.methods.submitAutoHash('722775529745285120').send({from: acc.address}); //Make random later
             
         });
         drawer.push(()=>{

@@ -14,15 +14,11 @@ pragma solidity 0.5.10;
 |*| (+) Clean up require && statements                   |*|
 |*| (+) Move some require statements to modifiers        |*|
 |*| (+) Change blockNum + 5 to a more reasonable value   |*|
-|*| (x) Add insurance option                             |*|
-|*| (x) optimize deposit for users                       |*|
 |*|                                                      |*|
 |*|======================================================|*|
 |*|                                                      |*|
 |*| (-) = Current objectives                             |*|
-|*| (|) = Will complete with client-side program         |*|
 |*| (+) = Will complete after client-side program        |*|
-|*| (x) = might not add                                  |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -63,7 +59,7 @@ contract Blackjack{
     uint256 possibleLoss;
     uint8 taskDone;
     address house;
-    uint256 globalRand;
+    uint256 public globalRand;
     address[] target;
 
     constructor(uint256 _minBet, uint256 _maxBet) public {
@@ -623,15 +619,24 @@ contract Blackjack{
         selfdestruct(msg.sender);
     }
 
-//============================================The following functions are for testing purposes only. They will be removed on final build============================================\\
-
     function returnHash(uint256 n) public view returns (uint256){
         return uint256(keccak256(abi.encode(n, msg.sender)));
     }
 
-    function submitReturnHash(uint256 n) public onlyPlayer() isProcessingRandom(){
+    function submitAutoHash(uint256 n) public onlyPlayer() isProcessingRandom(){
         submitHash(returnHash(n));
     }
+
+    function submitAutoHashRequest(uint256 n) public onlyPlayer() isInProgress(){
+        hashRequest(returnHash(n));
+    }
+
+    function submitAutoHashResponse(uint256 n, uint8 _index) public onlyPlayer() isInProgress(){
+        hashResponse(returnHash(n),_index);
+    }
+
+
+//============================================The following functions are for testing purposes only. They will be removed on final build============================================\\
 
     function showCards() public view returns (uint8[] memory){
         return players[msg.sender].cards;
@@ -643,13 +648,6 @@ contract Blackjack{
 
     function returnCardSum() public view returns (uint8){
         return players[msg.sender].cardSum;
-    }
-
-    function submitHashRequest(uint256 n) public onlyPlayer() isInProgress(){
-        hashRequest(returnHash(n));
-    }
-    function submitHashResponse(uint256 n, uint8 _index) public onlyPlayer() isInProgress(){
-        hashResponse(returnHash(n),_index);
     }
 
     function doNothing() public {}
