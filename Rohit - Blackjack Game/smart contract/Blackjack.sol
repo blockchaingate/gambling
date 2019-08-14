@@ -2,7 +2,7 @@ pragma solidity 0.5.10;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (+) Add timer for self destruct                      |*|
+|*| (+) Make sure everyone is gone (self destruct)       |*|
 |*| (+) Add timers for VARIOUS phases**                  |*|
 |*| (+) Fix playerCount indexes                          |*|
 |*| (+) Add tons of error trapping                       |*|
@@ -255,6 +255,7 @@ contract Blackjack{
 
     function submitDeposit() public payable onlyPlayer() notDealer() isProcessingRandom() {
         require(msg.value >= possibleLoss * 2, "Your deposit needs to match the bets made");
+        require(players[msg.sender].deposit == 0, "You already made a deposit");
         players[msg.sender].deposit = msg.value;
     }
 
@@ -477,20 +478,20 @@ contract Blackjack{
     }
 
     function split() public onlyPlayer() notDealer() isInProgress() {
-        if(
+        require(
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
             players[msg.sender].cards.length == 2 &&
             !players[msg.sender].split &&
-            players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13
-            ) {
-            players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
-            players[msg.sender].splitCards.push(players[msg.sender].cards[1]); //Might be removing this later depending on client-side but make sure to check over rest of split code then
-            players[msg.sender].cards.length--;
-            players[msg.sender].split = true;
-            players[msg.sender].cardSum /= 2;
-            players[msg.sender].altCardSum = players[msg.sender].cardSum;
-            blockNum = block.number;
-        }
+            players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13,
+            "You can't split now"
+        );
+        players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
+        players[msg.sender].splitCards.push(players[msg.sender].cards[1]); //Might be removing this later depending on client-side but make sure to check over rest of split code then
+        players[msg.sender].cards.length--;
+        players[msg.sender].split = true;
+        players[msg.sender].cardSum /= 2;
+        players[msg.sender].altCardSum = players[msg.sender].cardSum;
+        blockNum = block.number;
     }
 
     function transferToSplit() public onlyPlayer() notDealer() isInProgress() {
@@ -584,9 +585,10 @@ contract Blackjack{
         }
     }
 
-    function withdraw (uint256 _amount) public notDealer(){
+    function withdraw (uint256 _amount) public /*notDealer()*/{
         if (
-            !(msg.sender == playerNums[1] ||
+            !(msg.sender == house ||
+            msg.sender == playerNums[1] ||
             msg.sender == playerNums[2] ||
             msg.sender == playerNums[3] ||
             msg.sender == playerNums[4]) ||
@@ -614,13 +616,17 @@ contract Blackjack{
         }
     }
 
-    function end () public onlyDealer() {
+    /*function end () public onlyDealer() {
         require (state == GameState.Finished, "You can't leave during the game!");
         selfdestruct(msg.sender);
-    }
+    }*/
 
     function returnHash(uint256 n) public view returns (uint256){
         return uint256(keccak256(abi.encode(n, msg.sender)));
+    }
+
+    function returnDeposit() public view returns (uint256){
+        return players[msg.sender].deposit;
     }
 
     function submitAutoHash(uint256 n) public onlyPlayer() isProcessingRandom(){

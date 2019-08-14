@@ -111,7 +111,7 @@ window.addEventListener("load", () =>{
             }
 
             //Format text
-            let fontSize = Math.min(buttons[index].width*2.3/maxWidth,buttons[index].height/(1+indices.length))*0.9;                   
+            let fontSize = Math.min(buttons[index].width*2.3/maxWidth,buttons[index].height/(1+indices.length))*0.8;                   
             ctx.font = fontSize + "px Balthazar";
             ctx.fillStyle = buttons[index].textColour;
             ctx.textAlign = "center";
@@ -224,15 +224,9 @@ window.addEventListener("load", () =>{
             await contract.methods.playerCount().call().then(alert); //Replace with event listener
         });
         addButton(80, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
-            await closeGame(contract,ownerKey,10); //Make dynamic later
+            await automateRand(contract,acc.address,()=>{});
+            await closeGame(contract,acc.address,10); //Make dynamic later
             alert("Game Closed");
-            await makeEventListener(contract, async ()=> {  
-                await makeEventListener(contract, async () =>{
-                    //add more here
-                });
-                await contract.methods.submitNumber('3963456789123455313').send({from: acc.address});
-            });
-            await contract.methods.submitAutoHash('3963456789123455313').send({from: acc.address});
         });
         //makeBackButton(80, 210);
     }
@@ -303,18 +297,13 @@ window.addEventListener("load", () =>{
         });
     }
 
-    function awaitGameStartScreen () {
-        makeEventListener(contract, async ()=> {
-            drawer.pop();
-            await submitDeposit(contract, acc.address, 10); //Make dynamic later
-            await makeEventListener(contract, async ()=> {  
-                await makeEventListener(contract, async () =>{
-                    gameScreen();
-                });
-                await contract.methods.submitNumber('722775529745285120').send({from: acc.address}); //Link with previous random later
+    async function awaitGameStartScreen () {
+        await automateRand(contract,acc.address, async ()=>{
+            await submitDeposit(contract, acc.address, 10);//Make dynamic later
+            await makeEventListener(contract, 4, () =>{
+                drawer.pop();
+                gameScreen();
             });
-            await contract.methods.submitAutoHash('722775529745285120').send({from: acc.address}); //Make random later
-            
         });
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
@@ -326,7 +315,13 @@ window.addEventListener("load", () =>{
     }
 
     function gameScreen() {
-        addButton(80, 40, 200, 75, "#4CAF50","white","Hit",async () => {
+        addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
+        });
+        addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
+        });
+        addButton(-210, 125, 200, 75, "#4CAF50","white","Double Down",async () => {
+        });
+        addButton(10, 125, 200, 75, "#4CAF50","white","Split",async () => {
         });
     }
 
