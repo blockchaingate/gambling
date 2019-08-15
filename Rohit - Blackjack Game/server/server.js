@@ -61,6 +61,35 @@ app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/images/favicon.ico'));
 });
 
+for (let suit = 0; suit < 4; suit ++) {
+    for (let value = 1; value <= 13; value++) {
+        let card = "";
+        if (value == 1) {
+            card += "A";
+        } else if (value == 11) {
+            card += "J";
+        } else if (value == 12) {
+            card += "Q";
+        } else if (value == 13) {
+            card += "K";
+        } else {
+            card += value;
+        }
+        if (suit == 0) {
+            card += "D";
+        } else if (suit == 1) {
+            card += "C";
+        } else if (suit == 2) {
+            card += "H";
+        } else {
+            card += "S";
+        }
+        app.get('/'+card+'.png', (req, res) => {
+            res.sendFile(path.join(__dirname, '../client/images/cards/front/'+card+'.png'));
+        });
+    }
+}
+
 // Require Games routes
 require('./app/routes/game_routes.js')(app);
 

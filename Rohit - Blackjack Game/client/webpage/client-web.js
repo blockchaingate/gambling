@@ -13,13 +13,14 @@
 \*|======================================================|*/
 
 window.addEventListener("load", () =>{
-
+    
     // Set up canvas
     let canvas = document.getElementById("canvas");
     let ctx = canvas.getContext("2d");
-
+    
     let drawer = [];
     let buttons = [];
+    let cards = []
     //let joinButton, createButton, testButton;
     let w,h;
 
@@ -29,7 +30,7 @@ window.addEventListener("load", () =>{
     let privateKey;
 
     let input;
-          
+
     // Function to remove an element from an array
     function arrRemove(arr,element) {
         let index = arr.indexOf(element);
@@ -52,6 +53,20 @@ window.addEventListener("load", () =>{
             func: _func
         };
         buttons.push(button);
+        //return button;
+    }
+
+    function addCard (_image,_x,_y,_width,_height) {
+      
+        //Add button to array
+        let card = {
+            image: _image,
+            x: _x,
+            y: _y,
+            width: _width,
+            height: _height
+        };
+        cards.push(card);
         //return button;
     }
 
@@ -121,6 +136,13 @@ window.addEventListener("load", () =>{
             for (let  i = 0; i < lines.length; i++) {
                 ctx.fillText(lines[i], buttons[index].x + buttons[index].width/2, -h/3 + buttons[index].y + buttons[index].height*((1+i)/(2+indices.length)));
             }
+        }
+    }
+
+    function drawCards () {
+        for (let index = 0; index < cards.length; index++) {
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(cards[index].image,cards[index].x,cards[index].y,cards[index].width,cards[index].height);
         }
     }
 
@@ -314,7 +336,7 @@ window.addEventListener("load", () =>{
         });
     }
 
-    function gameScreen() {
+    async function gameScreen() {
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
         });
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
@@ -323,6 +345,17 @@ window.addEventListener("load", () =>{
         });
         addButton(10, 125, 200, 75, "#4CAF50","white","Split",async () => {
         });
+
+        //Load in cards
+        let cardVals = await returnCards(contract,acc.address);
+        console.log(cardVals);
+        for (let i = 0; i < cardVals.length; i++){
+            let image = new Image();
+            image.onload = function () {
+                addCard(image, -210+70*i, -h/3+220, 65, 100);
+            }
+            image.src = '/'+cardVals[i]+'.png';
+        }
     }
 
     // Draw all elements dynamic to window size
@@ -345,8 +378,8 @@ window.addEventListener("load", () =>{
 
     //Set up drawers
     drawer.push(drawTitle);
-    drawer.push(drawButtons);
-
+    drawer.push(drawButtons);  
+    drawer.push(drawCards);
     //Set up screen
     resizeCanvas();
 

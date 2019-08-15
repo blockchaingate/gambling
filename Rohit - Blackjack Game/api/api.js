@@ -137,7 +137,9 @@ function automateRand(contract,address,depositFunc) {
 			console.log(err);
 		} else if (event.returnValues.newState == 1){
 			let depo;
-			await contract.methods.returnDeposit().call({from: address}).then((res)=>{depo = res;});
+			await contract.methods.returnDeposit().call({from: address}).then((res)=>{
+				depo = res;
+			});
 			if (depo == 0){
 				await depositFunc();
 			}
@@ -164,7 +166,7 @@ async function showInitialCards(contract) {
 		.then(console.log);
 	await contract.methods.showSplitCards().call({from: client2Key})
 		.then(console.log);
-}
+} //Temp
 
 async function hit(contract,address) {
 	await contract.methods.submitAutoHashRequest('42450096').send({from: address});
@@ -189,7 +191,6 @@ async function doubleDown(contract,address) {
 	await contract.methods.showSplitCards().call({from: address})
 		.then(console.log);
 }
-
 
 async function split(contract,address) {
 	await contract.methods.split().send({from: address});
@@ -231,6 +232,39 @@ function getGames() {
 			resolve(arr);
 		});
 	});
+}
+
+async function returnCards (contract,address) {
+	let cards = [];
+	await contract.methods.showCards().call({from: address}).then((res) =>{
+		cards = res;
+	});
+	for (let i = 0; i < cards.length; i++) {
+		let card = "";
+		if (cards[i]%13 == 1) {
+            card += "A";
+        } else if (cards[i]%13 == 11) {
+            card += "J";
+        } else if (cards[i]%13 == 12) {
+            card += "Q";
+        } else if (cards[i]%13 == 0) {
+            card += "K";
+        } else {
+            card += cards[i];
+        }
+
+		if (cards[i]/13<= 1) {
+			card += "D";
+		} else if (cards[i]/13<= 2) {
+			card += "C";
+		} else if (cards[i]/13<= 3) {
+			card += "H";
+		} else {
+			card += "S";
+		}
+		cards[i] = card;
+	}
+	return cards;
 }
 
 async function removeOne(contract) {
@@ -290,7 +324,7 @@ window.stand = stand;
 window.transferToSplit = transferToSplit;
 window.finalRandProcess = finalRandProcess;
 window.withdraw = withdraw;
-
+window.returnCards = returnCards;
 // Export HTML request methods
 window.getGames = getGames;
 //window.removeOne = removeOne;
