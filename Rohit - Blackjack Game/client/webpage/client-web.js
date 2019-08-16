@@ -249,8 +249,20 @@ window.addEventListener("load", () =>{
             await automateRand(contract,acc.address,()=>{});
             await closeGame(contract,acc.address,10); //Make dynamic later
             alert("Game Closed");
+            dealerGameScreen();
         });
         //makeBackButton(80, 210);
+    }
+
+    function dealerGameScreen() {
+        drawer.push(()=>{
+            ctx.font = "40px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Please wait while the players make their moves", 0, -h/3 + 95);
+        });
+        
     }
 
     async function gameSelectScreen () {
@@ -324,7 +336,7 @@ window.addEventListener("load", () =>{
             await submitDeposit(contract, acc.address, 10);//Make dynamic later
             await makeEventListener(contract, 4, () =>{
                 drawer.pop();
-                gameScreen();
+                playerGameScreen();
             });
         });
         drawer.push(()=>{
@@ -336,7 +348,7 @@ window.addEventListener("load", () =>{
         });
     }
 
-    async function gameScreen() {
+    async function playerGameScreen() {
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
         });
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {

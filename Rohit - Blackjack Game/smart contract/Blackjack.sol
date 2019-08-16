@@ -58,9 +58,11 @@ contract Blackjack{
     uint8 public playerCount;
     uint256 possibleLoss;
     uint8 taskDone;
-    address house;
+    address public house;
     uint256 public globalRand;
     address[] target;
+    uint256[4] hashNums;
+    uint256[4] randNums;
 
     constructor(uint256 _minBet, uint256 _maxBet) public {
         require (_maxBet >= 1 ether && _maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid bet params");
@@ -201,6 +203,8 @@ contract Blackjack{
         taskDone = 0;
         globalRand = 0;
         delete target;
+        delete hashNums;
+        delete randNums;
         state = GameState.Accepting;
         emit StateChange(uint8(state)); //temp
     }
@@ -247,10 +251,10 @@ contract Blackjack{
         kick();
         players[house].pool += msg.value;
         state = GameState.ProcessingRandom;
-        emit StateChange(uint8(state));
         taskDone = 0;
         resetValid();
         blockNum = block.number;
+        emit StateChange(uint8(state));
     }
 
     function submitDeposit() public payable onlyPlayer() notDealer() isProcessingRandom() {
@@ -270,9 +274,9 @@ contract Blackjack{
         if (taskDone == (playerCount + 1)) {
             taskDone = 0;
             state = GameState.VerifyingRandom;
-            emit StateChange(uint8(state));
             resetValid();
             blockNum = block.number;
+            emit StateChange(uint8(state));
         }
     }
 
@@ -286,7 +290,6 @@ contract Blackjack{
         players[msg.sender].randNum = _randNum;
         if (taskDone == (playerCount + 1)) {
             state = GameState.PreparingGame;
-            emit StateChange(uint8(state)); //temp
             prepare();
         }
     }
@@ -312,9 +315,9 @@ contract Blackjack{
                 }
             }
             globalRand = uint256(keccak256(abi.encode(globalRand)));
-            state = GameState.InProgress;
-            emit StateChange(uint8(state)); //temp
             deal();
+            state = GameState.InProgress;
+            emit StateChange(uint8(state));
         }
     }
 
@@ -377,25 +380,29 @@ contract Blackjack{
         if (players[msg.sender].randState == RandProcessState.AwaitingHashRequest){
             players[msg.sender].hashNum = _hash;
             players[msg.sender].randState = RandProcessState.AwaitingHashResponse;
-            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
             target.push(msg.sender);
             players[msg.sender].valid = true;
             players[house].valid = false;
             blockNum = block.number;
+            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
         }
     }
 
-    function hashResponse(uint256 _hash, uint8 _index) public onlyDealer() isInProgress() {
-        if (players[target[_index]].randState == RandProcessState.AwaitingHashResponse) {
-            players[house].hashNum = _hash;
-            players[target[_index]].randState = RandProcessState.AwaitingNumRequest;
-            emit StateChange(uint8(players[target[_index]].randState) + 6);
-            if (target.length == 1) {
-                players[house].valid = true;
+    function hashResponse(uint256 _hash) public onlyDealer() isInProgress() {
+        //if (players[target[_index]].randState == RandProcessState.AwaitingHashResponse) {
+        for(uint i = 0; i < target.length; i++) {
+            if (players[target[i]].randState == RandProcessState.AwaitingHashResponse){
+                hashNums[i] = _hash;
+                players[target[i]].randState = RandProcessState.AwaitingNumRequest;
+                players[target[i]].valid = false;
+                if (target.length == 1) {
+                    players[house].valid = true;
+                }
+                blockNum = block.number;
+                emit StateChange(uint8(players[target[i]].randState) + 6);
             }
-            players[target[_index]].valid = false;
-            blockNum = block.number;
         }
+        //}
     }
 
     function numRequest(uint256 _randNum) public onlyPlayer() notDealer() isInProgress() { //Add error trapping
@@ -405,26 +412,29 @@ contract Blackjack{
             ) {
             players[msg.sender].randNum = _randNum;
             players[msg.sender].randState = RandProcessState.AwaitingNumResponse;
-            emit StateChange(uint8(players[msg.sender].randState) + 6);
             players[msg.sender].valid = true;
             players[house].valid = false;
             blockNum = block.number;
+            emit StateChange(uint8(players[msg.sender].randState) + 6);
         }
     }
 
-    function numResponse(uint256 _randNum, uint8 _index) public onlyDealer() isInProgress() { //Add error trapping
-        if (
-            players[target[_index]].randState == RandProcessState.AwaitingNumResponse &&
-            keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum)
-            ) {
-            players[msg.sender].randNum = _randNum;
-            players[target[_index]].randState = RandProcessState.AwaitingHit;
-            emit StateChange(uint8(players[target[_index]].randState) + 6);
-            blockNum = block.number;
-            if (target.length == 1) {
-                players[house].valid = true;
+    function numResponse(uint256 _randNum) public onlyDealer() isInProgress() { //Add error trapping
+        for (uint i = 0; i < target.length; i++){
+            if (
+                players[target[i]].randState == RandProcessState.AwaitingNumResponse &&
+                keccak256(abi.encode(_randNum, msg.sender)) == bytes32(hashNums[i])
+                ) {
+                delete hashNums[i];
+                randNums[i] = _randNum;
+                players[target[i]].randState = RandProcessState.AwaitingHit;
+                blockNum = block.number;
+                if (target.length == 1) {
+                    players[house].valid = true;
+                }
+                players[target[i]].valid = false;
+                emit StateChange(uint8(players[target[i]].randState) + 6);
             }
-            players[target[_index]].valid = false;
         }
     }
 
@@ -434,18 +444,18 @@ contract Blackjack{
             players[msg.sender].randState == RandProcessState.AwaitingHit
             ) {
             players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
-            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
             for (uint8 i = 0; i < target.length; i++) {
                 if (target[i] == msg.sender) {
-                    delete target[i];
+                    addCard(uint256(keccak256(abi.encode(randNums[i] ^ players[msg.sender].randNum))), msg.sender);
                     target[i] = target[target.length-1];
                     target.length--;
+                    delete randNums[i];
                     i = uint8(target.length); //Replace with break statement later
                 }
             }
-            addCard(uint256(keccak256(abi.encode(players[house].randNum ^ players[msg.sender].randNum))), msg.sender);
             evaluateHand(msg.sender);
             blockNum = block.number;
+            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
         }
     }
 
@@ -581,6 +591,8 @@ contract Blackjack{
             } else if (_cardSum > players[house].cardSum) {
                 players[house].pool -= players[_address].bet;
                 players[_address].pool += players[_address].bet * 2;
+            } else {
+                players[house].pool += players[_address].bet;
             }
         }
     }
@@ -637,8 +649,8 @@ contract Blackjack{
         hashRequest(returnHash(n));
     }
 
-    function submitAutoHashResponse(uint256 n, uint8 _index) public onlyPlayer() isInProgress(){
-        hashResponse(returnHash(n),_index);
+    function submitAutoHashResponse(uint256 n) public onlyPlayer() isInProgress(){
+        hashResponse(returnHash(n));
     }
 
 
