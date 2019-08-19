@@ -438,25 +438,26 @@ contract Blackjack{
         }
     }
 
-    function hit() public onlyPlayer() notDealer() isInProgress() { //Change to require
-        if (
+    function hit() public onlyPlayer() notDealer() isInProgress() {
+        require(
             !players[msg.sender].done &&
-            players[msg.sender].randState == RandProcessState.AwaitingHit
-            ) {
-            players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
-            for (uint8 i = 0; i < target.length; i++) {
-                if (target[i] == msg.sender) {
-                    addCard(uint256(keccak256(abi.encode(randNums[i] ^ players[msg.sender].randNum))), msg.sender);
-                    target[i] = target[target.length-1];
-                    target.length--;
-                    delete randNums[i];
-                    i = uint8(target.length); //Replace with break statement later
-                }
+            players[msg.sender].randState == RandProcessState.AwaitingHit,
+            "You can't use the hit command now"
+        );
+        players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
+        for (uint8 i = 0; i < target.length; i++) {
+            if (target[i] == msg.sender) {
+                addCard(uint256(keccak256(abi.encode(randNums[i] ^ players[msg.sender].randNum))), msg.sender);
+                target[i] = target[target.length-1];
+                target.length--;
+                delete randNums[i];
+                i = uint8(target.length); //Replace with break statement later
             }
-            evaluateHand(msg.sender);
-            blockNum = block.number;
-            emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
         }
+        evaluateHand(msg.sender);
+        transferToSplit();
+        blockNum = block.number;
+        emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
     }
 
     function stand() public onlyPlayer() notDealer() isInProgress() {
@@ -467,6 +468,7 @@ contract Blackjack{
             ) {
             players[msg.sender].done = true;
             players[msg.sender].valid = true;
+            transferToSplit();
             blockNum = block.number;
         }
     }
@@ -476,14 +478,15 @@ contract Blackjack{
             (players[msg.sender].cardSum >= 9 || players[msg.sender].cardSum <= 11)&&
             players[msg.sender].cards.length >= 2 &&
             !players[msg.sender].done &&
+            !players[msg.sender].split &&
             players[msg.sender].randState == RandProcessState.AwaitingHit,
             "Invalid double down."
         );
-        hit();
         players[msg.sender].pool -= players[msg.sender].bet;
         players[msg.sender].bet *= 2;
         players[msg.sender].done = true;
         players[msg.sender].valid = true;
+        hit();
         blockNum = block.number;
     }
 
@@ -504,7 +507,7 @@ contract Blackjack{
         blockNum = block.number;
     }
 
-    function transferToSplit() public onlyPlayer() notDealer() isInProgress() {
+    function transferToSplit() private {
         if (players[msg.sender].done && players[msg.sender].split && players[msg.sender].splitCards.length == 1) {
             players[msg.sender].splitCards = players[msg.sender].cards;
             players[msg.sender].cards.length = 0;
@@ -513,17 +516,17 @@ contract Blackjack{
             players[msg.sender].cardSum = players[msg.sender].altCardSum - players[msg.sender].cardSum;
             players[msg.sender].altCardSum -= players[msg.sender].cardSum;
             players[msg.sender].done = false;
-            blockNum = block.number;
+            players[msg.sender].valid = false;
         }
     }
 
-    function finalRandProcess() public /*onlyDealer()*/ isInProgress() {
+    function finalRandProcess() public /*onlyDealer()*/ isInProgress() { //fix waiting for players who are out
         if (
             (block.number > blockNum + 5) ||
-            ((!players[playerNums[1]].valid || (players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
-            (!players[playerNums[2]].valid || (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
-            (!players[playerNums[3]].valid || (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
-            (!players[playerNums[4]].valid || (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
+            ((/*!players[playerNums[1]].valid || */(players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
+            (/*!players[playerNums[2]].valid ||*/ (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
+            (/*!players[playerNums[3]].valid ||*/ (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
+            (/*!players[playerNums[4]].valid ||*/ (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
             ) {
             kick();
             taskDone = 0;

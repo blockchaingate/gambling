@@ -66,7 +66,6 @@ async function runGame() {
 	await split(contract, client1Key);
 	await hit(contract, client1Key);
 	await stand(contract, client1Key);
-	await transferToSplit(contract, client1Key);
 	await hit(contract, client1Key);
 	await stand(contract, client1Key);
 	await hit(contract, client2Key);
@@ -192,11 +191,11 @@ async function showInitialCards(contract) {
 } //Temp
 
 async function hit(contract,address) {
-	/*await makeEventListener(contract,7,async()=>{
-		await contract.methods.submitAutoHashResponse('12034602216').send({from: ownerKey});
-		await timeBurn(contract,ownerKey);
-	});*/
-	await makeEventListener(contract,10,async()=>{
+	let randNum;
+	do {
+		randNum = await randomatic('0',20);
+	} while (randNum.charAt(0)=='0'); // Put into function	
+	await makeEventListener(contract,10,async()=>{ // Change later to make sure it only responds to user's event
 		await contract.methods.hit().send({from: address});
 		await contract.methods.showCards().call({from: address})
 			.then(console.log);
@@ -204,10 +203,10 @@ async function hit(contract,address) {
 			.then(console.log);
 	});
 	await makeEventListener(contract,8,async()=>{
-		await contract.methods.numRequest('42450096').send({from: address});		//Randomize
+		await contract.methods.numRequest(randNum).send({from: address});		//Randomize
 		await timeBurn(contract,ownerKey)
 	});
-	await contract.methods.submitAutoHashRequest('42450096').send({from: address});
+	await contract.methods.submitAutoHashRequest(randNum).send({from: address});
 	await timeBurn(contract,ownerKey);
 }
 
@@ -233,10 +232,6 @@ async function split(contract,address) {
 
 async function stand (contract,address) {
 	await contract.methods.stand().send({from: address});
-}
-
-async function transferToSplit(contract,address){
-	await contract.methods.transferToSplit().send({from: address});
 }
 
 async function finalRandProcess(contract,address){
@@ -266,11 +261,17 @@ function getGames() {
 	});
 }
 
-async function returnCards (contract,address) {
+async function returnCards (contract,address,split) {
 	let cards = [];
-	await contract.methods.showCards().call({from: address}).then((res) =>{
-		cards = res;
-	});
+	if (split) {
+		await contract.methods.showSplitCards().call({from: address}).then((res) =>{
+			cards = res;
+		});	
+	} else {
+		await contract.methods.showCards().call({from: address}).then((res) =>{
+			cards = res;
+		});
+	}
 	for (let i = 0; i < cards.length; i++) {
 		let card = "";
 		if (cards[i]%13 == 1) {
@@ -282,7 +283,7 @@ async function returnCards (contract,address) {
         } else if (cards[i]%13 == 0) {
             card += "K";
         } else {
-            card += cards[i];
+            card += cards[i]%13;
         }
 
 		if (cards[i]/13<= 1) {
@@ -332,8 +333,8 @@ function makeEventListener(contract, eventNum, func) {
 	});
 }
 
-runGame();
-/*
+//runGame();
+
 // Export libraries
 window.Web3 = Web3;
 window.bj = bj;
@@ -353,7 +354,6 @@ window.makeEventListener = makeEventListener;
 window.split = split;
 window.hit = hit;
 window.stand = stand;
-window.transferToSplit = transferToSplit;
 window.finalRandProcess = finalRandProcess;
 window.withdraw = withdraw;
 window.returnCards = returnCards;
@@ -370,7 +370,6 @@ window.getGames = getGames;
 //makeEventListener(contract);
 
 //=====================================================================================Temp code=====================================================================================\\
-
 /*function count(n) {
 	console.log(n++); 
 	if (n < 30){

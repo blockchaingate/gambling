@@ -20,7 +20,8 @@ window.addEventListener("load", () =>{
     
     let drawer = [];
     let buttons = [];
-    let cards = []
+    let cards = [];
+    let cards2 = [];
     //let joinButton, createButton, testButton;
     let w,h;
 
@@ -56,18 +57,17 @@ window.addEventListener("load", () =>{
         //return button;
     }
 
-    function addCard (_image,_x,_y,_width,_height) {
+    function addCard (_image,splitCard) {
       
         //Add button to array
         let card = {
             image: _image,
-            x: _x,
-            y: _y,
-            width: _width,
-            height: _height
         };
-        cards.push(card);
-        //return button;
+        if(splitCard){
+            cards2.push(card);
+        } else {
+            cards.push(card);
+        }
     }
 
     // Resize canvas event listener function
@@ -140,9 +140,22 @@ window.addEventListener("load", () =>{
     }
 
     function drawCards () {
+        ctx.font = "40px Balthazar";
+        ctx.fillStyle = "#7bff00";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Hand 1", -275, -h/3 + 270);
+        ctx.fillText("Hand 2", -275, -h/3 + 390);
+        ctx.fillStyle = "#DEB887";
+        ctx.fillRect(-210,-h/3+225,425,110);
+        ctx.fillRect(-210,-h/3+345,425,110);
         for (let index = 0; index < cards.length; index++) {
             ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(cards[index].image,cards[index].x,cards[index].y,cards[index].width,cards[index].height);
+            ctx.drawImage(cards[index].image, -205+70 * index, -h/3 + 230, 65, 100);
+        }
+        for (let index = 0; index < cards2.length; index++) {
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(cards2[index].image, -205+70 * index, -h/3 + 350, 65, 100);
         }
     }
 
@@ -248,7 +261,7 @@ window.addEventListener("load", () =>{
         addButton(80, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
             await automateRand(contract,acc.address,()=>{});
             await closeGame(contract,acc.address,10); //Make dynamic later
-            alert("Game Closed");
+            buttons = [];
             dealerGameScreen();
         });
         //makeBackButton(80, 210);
@@ -349,22 +362,48 @@ window.addEventListener("load", () =>{
     }
 
     async function playerGameScreen() {
+        drawer.push(drawCards);
+        let cardCount;
+        let splitCardCount;
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
+            await hit(contract, acc.address);
+            let cardVals = await returnCards(contract,acc.address,false);
+            let splitCardVals = await returnCards(contract,acc.address,true);
+            if (splitCardVals.length > 1) { //Continue later because possible force hit on init split
+                splitCardCount = splitCardVals.length;
+                let image = new Image();
+                image.onload = function () {
+                    addCard(image, true);
+                }  
+                image.src = '/'+splitCardVals[splitCardVals.length-1] + '.png';
+            } else if (cardVals.length != cardCount) {
+                cardCount = cardVals.length;
+                let image = new Image();
+                image.onload = function () {
+                    addCard(image, false);
+                }  
+                image.src = '/' + cardVals[cardVals.length-1] + '.png';
+            }
         });
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
         });
         addButton(-210, 125, 200, 75, "#4CAF50","white","Double Down",async () => {
         });
         addButton(10, 125, 200, 75, "#4CAF50","white","Split",async () => {
+            await split(contract, acc.address);
+            cards2.push(cards.pop());
+            cardCount = 1;
+            splitCardCount = 1;
         });
 
         //Load in cards
-        let cardVals = await returnCards(contract,acc.address);
-        console.log(cardVals);
+        let cardVals = await returnCards(contract,acc.address,false);
+        cardCount = 2;
+        splitCardCount = 0
         for (let i = 0; i < cardVals.length; i++){
             let image = new Image();
             image.onload = function () {
-                addCard(image, -210+70*i, -h/3+220, 65, 100);
+                addCard(image, false);
             }
             image.src = '/'+cardVals[i]+'.png';
         }
@@ -391,7 +430,6 @@ window.addEventListener("load", () =>{
     //Set up drawers
     drawer.push(drawTitle);
     drawer.push(drawButtons);  
-    drawer.push(drawCards);
     //Set up screen
     resizeCanvas();
 
