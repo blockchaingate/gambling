@@ -22,6 +22,7 @@ window.addEventListener("load", () =>{
     let buttons = [];
     let cards = [];
     let cards2 = [];
+    let dealerCards = [];
     //let joinButton, createButton, testButton;
     let w,h;
 
@@ -57,17 +58,13 @@ window.addEventListener("load", () =>{
         //return button;
     }
 
-    function addCard (_image,splitCard) {
+    function addCard (_image,arr) {
       
         //Add button to array
         let card = {
             image: _image,
         };
-        if(splitCard){
-            cards2.push(card);
-        } else {
-            cards.push(card);
-        }
+        arr.push(card);
     }
 
     // Resize canvas event listener function
@@ -156,6 +153,10 @@ window.addEventListener("load", () =>{
         for (let index = 0; index < cards2.length; index++) {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(cards2[index].image, -205+70 * index, -h/3 + 350, 65, 100);
+        }
+        for (let index = 0; index < dealerCards.length; index++) {
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(dealerCards[index].image, 220+70* index, -h/3 + 290, 65, 100);
         }
     }
 
@@ -268,6 +269,10 @@ window.addEventListener("load", () =>{
     }
 
     function dealerGameScreen() {
+        addButton(-100, 200, 200, 75,"#4CAF50","white","Proceed", async () => {
+            await finalRandProcess(contract,acc.address);
+            drawer.pop();
+        });
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
             ctx.fillStyle = "#7bff00";
@@ -275,7 +280,6 @@ window.addEventListener("load", () =>{
             ctx.textBaseline = "middle";
             ctx.fillText("Please wait while the players make their moves", 0, -h/3 + 95);
         });
-        
     }
 
     async function gameSelectScreen () {
@@ -365,29 +369,51 @@ window.addEventListener("load", () =>{
         drawer.push(drawCards);
         let cardCount;
         let splitCardCount;
+        let standing = false;
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
             await hit(contract, acc.address);
             let cardVals = await returnCards(contract,acc.address,false);
             let splitCardVals = await returnCards(contract,acc.address,true);
-            if (splitCardVals.length > 1) { //Continue later because possible force hit on init split
-                splitCardCount = splitCardVals.length;
+            if (cardVals.length != cardCount || splitCardVals.length != splitCardCount) { //Add highligting to boxes to know which hand is being "hit"
                 let image = new Image();
-                image.onload = function () {
-                    addCard(image, true);
-                }  
-                image.src = '/'+splitCardVals[splitCardVals.length-1] + '.png';
-            } else if (cardVals.length != cardCount) {
+
+                if (splitCardVals.length != splitCardCount && !standing) {
+                    image.onload = function () {
+                        addCard(image, cards);
+                    }
+                    image.src = '/' + splitCardVals[splitCardVals.length-1]+ '.png';
+                } else if (splitCardVals.length > 1) {
+                    image.onload = function () {
+                        addCard(image, cards2);
+                    }
+                    image.src = '/' + cardVals[cardVals.length-1]+ '.png';
+                } else {
+                    image.onload = function () {
+                        addCard(image, cards);
+                    }
+                    image.src = '/' + cardVals[cardVals.length-1]+ '.png';
+                }
+
                 cardCount = cardVals.length;
-                let image = new Image();
-                image.onload = function () {
-                    addCard(image, false);
-                }  
-                image.src = '/' + cardVals[cardVals.length-1] + '.png';
+                splitCardCount = splitCardVals.length;
             }
         });
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
+            await stand(contract,acc.address);
+            standing = true;
+            alert("stand");
         });
         addButton(-210, 125, 200, 75, "#4CAF50","white","Double Down",async () => {
+            await doubleDown(contract, acc.address);
+            let cardVals = await returnCards(contract,acc.address,false);
+            if (cardVals.length != cardCount) { //Add highligting to boxes to know which hand is being "hit"
+                let image = new Image();
+                image.onload = function () {
+                    addCard(image, cards);
+                }
+                image.src = '/' + cardVals[cardVals.length-1]+ '.png';
+                cardCount = cardVals.length;
+            }
         });
         addButton(10, 125, 200, 75, "#4CAF50","white","Split",async () => {
             await split(contract, acc.address);
@@ -403,10 +429,16 @@ window.addEventListener("load", () =>{
         for (let i = 0; i < cardVals.length; i++){
             let image = new Image();
             image.onload = function () {
-                addCard(image, false);
+                addCard(image, cards);
             }
             image.src = '/'+cardVals[i]+'.png';
         }
+        let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
+        let image = new Image();
+        image.onload = function () {
+            addCard(image, dealerCards);
+        }
+        image.src = '/'+dealerVals[dealerVals.length-1]+'.png';
     }
 
     // Draw all elements dynamic to window size

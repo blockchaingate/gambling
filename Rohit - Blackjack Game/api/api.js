@@ -73,7 +73,12 @@ async function runGame() {
 	await finalRandProcess(contract, ownerKey);
 	//await contract.methods.returnDeposit().call({from: client1Key}).then(console.log);
 	//await contract.methods.returnDeposit().call({from: client2Key}).then(console.log);
-	await withdraw(contract);
+	await withdraw(contract,client1Key,100);
+	await withdraw(contract,client1Key,100);
+	await withdraw(contract,client2Key,100);
+	await withdraw(contract,ownerKey,100);
+	await withdraw(contract,ownerKey,100);
+	await removeOne(contract);
 	await contract.methods.showCards().call({from: ownerKey})
 		.then(console.log);
 	//listener.unsubscribe();
@@ -191,6 +196,14 @@ async function showInitialCards(contract) {
 } //Temp
 
 async function hit(contract,address) {
+	let verified;
+	await contract.methods.verifyHit().call({from: address}).then((res)=>{
+		verified = res; 
+	});
+	if (!verified) {
+		console.log("Invalid Hit");
+		return;
+	}
 	let randNum;
 	do {
 		randNum = await randomatic('0',20);
@@ -211,15 +224,31 @@ async function hit(contract,address) {
 }
 
 async function doubleDown(contract,address) {
-	await contract.methods.submitAutoHashRequest('42450096').send({from: address});
-	await contract.methods.submitAutoHashResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.numRequest('42450096').send({from: address});
-	await contract.methods.numResponse('12034602216',0).send({from: ownerKey});
-	await contract.methods.doubleDown().send({from: address});
-	await contract.methods.showCards().call({from: address})
-		.then(console.log);
-	await contract.methods.showSplitCards().call({from: address})
-		.then(console.log);
+	let verified;
+	await contract.methods.verifyDoubleDown().call({from: address}).then((res)=>{
+		verified = res; 
+	});
+	if (!verified) {
+		console.log("Invalid Double Down");
+		return;
+	}
+	let randNum;
+	do {
+		randNum = await randomatic('0',20);
+	} while (randNum.charAt(0)=='0'); // Put into function	
+	await makeEventListener(contract,10,async()=>{ // Change later to make sure it only responds to user's event
+		await contract.methods.doubleDown().send({from: address});
+		await contract.methods.showCards().call({from: address})
+			.then(console.log);
+		await contract.methods.showSplitCards().call({from: address})
+			.then(console.log);
+	});
+	await makeEventListener(contract,8,async()=>{
+		await contract.methods.numRequest(randNum).send({from: address});		//Randomize
+		await timeBurn(contract,ownerKey)
+	});
+	await contract.methods.submitAutoHashRequest(randNum).send({from: address});
+	await timeBurn(contract,ownerKey);
 }
 
 async function split(contract,address) {
@@ -238,13 +267,8 @@ async function finalRandProcess(contract,address){
 	await contract.methods.finalRandProcess().send({from: address});
 }
 
-async function withdraw(contract) {
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client1Key});
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: client2Key});
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
-	await contract.methods.withdraw((100 * Math.pow(10,18)).toString(10)).send({from: ownerKey});
-	await removeOne(contract);
+async function withdraw(contract,address,value) {
+	await contract.methods.withdraw((value * Math.pow(10,18)).toString(10)).send({from: address});
 }
 
 function getGames() {
@@ -300,6 +324,12 @@ async function returnCards (contract,address,split) {
 	return cards;
 }
 
+async function returnOwnerAddress (contract) {
+	await contract.methods.house().call().then((res)=>{
+		return res;
+	});
+}
+
 async function removeOne(contract) {
 	await request({
 		url: 'http://localhost:3000/games/'+contract.options.address+'/',
@@ -353,10 +383,13 @@ window.automateRand = automateRand;
 window.makeEventListener = makeEventListener;
 window.split = split;
 window.hit = hit;
+window.doubleDown = doubleDown;
 window.stand = stand;
 window.finalRandProcess = finalRandProcess;
 window.withdraw = withdraw;
 window.returnCards = returnCards;
+window.returnOwnerAddress = returnOwnerAddress;
+
 // Export HTML request methods
 window.getGames = getGames;
 //window.removeOne = removeOne;

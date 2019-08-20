@@ -439,11 +439,7 @@ contract Blackjack{
     }
 
     function hit() public onlyPlayer() notDealer() isInProgress() {
-        require(
-            !players[msg.sender].done &&
-            players[msg.sender].randState == RandProcessState.AwaitingHit,
-            "You can't use the hit command now"
-        );
+        require(verifyHit() && players[msg.sender].randState == RandProcessState.AwaitingHit, "You can't hit now");
         players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
         for (uint8 i = 0; i < target.length; i++) {
             if (target[i] == msg.sender) {
@@ -460,6 +456,10 @@ contract Blackjack{
         emit StateChange(uint8(players[msg.sender].randState) + 6); //temp
     }
 
+    function verifyHit() public view isInProgress() returns(bool verified){
+        verified = !players[msg.sender].done;
+    }
+
     function stand() public onlyPlayer() notDealer() isInProgress() {
         if(
             !players[msg.sender].done &&
@@ -473,21 +473,22 @@ contract Blackjack{
         }
     }
 
-    function doubleDown() public onlyPlayer() notDealer() isInProgress(){ //Remove redundant overlapping calls from hit (be careful of async)
-        require(
-            (players[msg.sender].cardSum >= 9 || players[msg.sender].cardSum <= 11)&&
-            players[msg.sender].cards.length >= 2 &&
-            !players[msg.sender].done &&
-            !players[msg.sender].split &&
-            players[msg.sender].randState == RandProcessState.AwaitingHit,
-            "Invalid double down."
-        );
+    function doubleDown() public onlyPlayer() notDealer() isInProgress(){
+        require(verifyDoubleDown() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid double down.");
+        hit();
         players[msg.sender].pool -= players[msg.sender].bet;
         players[msg.sender].bet *= 2;
         players[msg.sender].done = true;
         players[msg.sender].valid = true;
-        hit();
         blockNum = block.number;
+    }
+
+    function verifyDoubleDown() public view isInProgress() returns(bool verified){
+        verified = verifyHit() &&
+                   players[msg.sender].cardSum >= 9 &&
+                   players[msg.sender].cardSum <= 11 &&
+                   players[msg.sender].cards.length >= 2 &&
+                   !players[msg.sender].split;
     }
 
     function split() public onlyPlayer() notDealer() isInProgress() {
@@ -499,7 +500,7 @@ contract Blackjack{
             "You can't split now"
         );
         players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
-        players[msg.sender].splitCards.push(players[msg.sender].cards[1]); //Might be removing this later depending on client-side but make sure to check over rest of split code then
+        players[msg.sender].splitCards.push(players[msg.sender].cards[1]);
         players[msg.sender].cards.length--;
         players[msg.sender].split = true;
         players[msg.sender].cardSum /= 2;
@@ -515,18 +516,19 @@ contract Blackjack{
             players[msg.sender].altCardSum += players[msg.sender].cardSum;
             players[msg.sender].cardSum = players[msg.sender].altCardSum - players[msg.sender].cardSum;
             players[msg.sender].altCardSum -= players[msg.sender].cardSum;
+            players[msg.sender].flexibility = 0;
             players[msg.sender].done = false;
             players[msg.sender].valid = false;
         }
     }
 
-    function finalRandProcess() public /*onlyDealer()*/ isInProgress() { //fix waiting for players who are out
+    function finalRandProcess() public /*onlyDealer()*/ isInProgress() {
         if (
             (block.number > blockNum + 5) ||
-            ((/*!players[playerNums[1]].valid || */(players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
-            (/*!players[playerNums[2]].valid ||*/ (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
-            (/*!players[playerNums[3]].valid ||*/ (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
-            (/*!players[playerNums[4]].valid ||*/ (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
+            ((players[playerNums[1]].bet == 0 || (players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
+            (players[playerNums[2]].bet == 0 || (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
+            (players[playerNums[3]].bet == 0 || (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
+            (players[playerNums[4]].bet == 0 || (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
             ) {
             kick();
             taskDone = 0;
