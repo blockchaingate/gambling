@@ -106,10 +106,13 @@ async function makeContract(address,minBet,maxBet) {
 		console.log(body);
 	  }
 	);
-	await contract.methods.newGame().send({from: address});
+	newGame(contract,address);
 	return contract;
 }
 
+async function newGame(contract,address) {
+	await contract.methods.newGame().send({from: address});
+}
 async function joinGame(contract,address,value){
 	await contract.methods.joinGame().send({from: address, value: value * Math.pow(10,18)});
 }
@@ -271,6 +274,10 @@ async function withdraw(contract,address,value) {
 	await contract.methods.withdraw((value * Math.pow(10,18)).toString(10)).send({from: address});
 }
 
+async function leave(contract,address) {
+	await contract.methods.leave().send({from: address});
+}
+
 function getGames() {
 	let arr = [];
 	return new Promise(function(resolve,reject) {
@@ -330,6 +337,12 @@ async function returnOwnerAddress (contract) {
 	});
 }
 
+async function possibleLoss (contract) {
+	await contract.methods.possibleLoss().call().then((res)=>{
+		return res;
+	})
+}
+
 async function removeOne(contract) {
 	await request({
 		url: 'http://localhost:3000/games/'+contract.options.address+'/',
@@ -373,6 +386,7 @@ window.cBlackjack = cBlackjack;
 
 // Export API methods 
 window.makeContract = makeContract;
+window.newGame = newGame;
 window.joinGame = joinGame;
 window.bet = bet;
 window.startTimer = startTimer;
@@ -387,12 +401,14 @@ window.doubleDown = doubleDown;
 window.stand = stand;
 window.finalRandProcess = finalRandProcess;
 window.withdraw = withdraw;
+window.leave = leave;
 window.returnCards = returnCards;
 window.returnOwnerAddress = returnOwnerAddress;
+window.possibleLoss = possibleLoss;
 
 // Export HTML request methods
 window.getGames = getGames;
-//window.removeOne = removeOne;
+window.removeOne = removeOne;
 
 //testing
 //window.removeAll = removeAll;

@@ -56,7 +56,7 @@ contract Blackjack{
     mapping(address => Player) public players;
     mapping(uint8 => address) public playerNums;
     uint8 public playerCount;
-    uint256 possibleLoss;
+    uint256 public possibleLoss;
     uint8 taskDone;
     address public house;
     uint256 public globalRand;
@@ -198,7 +198,13 @@ contract Blackjack{
             players[playerNums[i]].done = false;
             players[playerNums[i]].randState = RandProcessState.AwaitingHashRequest;
         }
+        timerStarted = false;
         playerCount = 0;
+        for (uint8 i = 1; i <= 4; i++) {
+            if (players[playerNums[i]].pool != 0) {
+                playerCount++;
+            }
+        }
         possibleLoss = 0;
         taskDone = 0;
         globalRand = 0;
@@ -214,10 +220,11 @@ contract Blackjack{
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;
-        while (players[playerNums[playerCount]].pool != 0) {
-            playerCount++;
+        uint8 counter = 1;
+        while (players[playerNums[counter]].pool != 0) {
+            counter++;
         }
-        playerNums[playerCount] = msg.sender;
+        playerNums[counter] = msg.sender;
         players[msg.sender].wallet = msg.sender;
         possibleLoss += msg.value;
         players[msg.sender].pool = msg.value;
@@ -439,7 +446,7 @@ contract Blackjack{
     }
 
     function hit() public onlyPlayer() notDealer() isInProgress() {
-        require(verifyHit() && players[msg.sender].randState == RandProcessState.AwaitingHit, "You can't hit now");
+        require(verifyHit() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid hit");
         players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
         for (uint8 i = 0; i < target.length; i++) {
             if (target[i] == msg.sender) {
@@ -461,16 +468,16 @@ contract Blackjack{
     }
 
     function stand() public onlyPlayer() notDealer() isInProgress() {
-        if(
+        require(
             !players[msg.sender].done &&
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
-            players[msg.sender].cards.length >= 2
-            ) {
-            players[msg.sender].done = true;
-            players[msg.sender].valid = true;
-            transferToSplit();
-            blockNum = block.number;
-        }
+            players[msg.sender].cards.length >= 2,
+            "Invalid stand"
+        );
+        players[msg.sender].done = true;
+        players[msg.sender].valid = true;
+        transferToSplit();
+        blockNum = block.number;
     }
 
     function doubleDown() public onlyPlayer() notDealer() isInProgress(){

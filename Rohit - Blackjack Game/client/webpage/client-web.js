@@ -139,13 +139,15 @@ window.addEventListener("load", () =>{
     function drawCards () {
         ctx.font = "40px Balthazar";
         ctx.fillStyle = "#7bff00";
-        ctx.textAlign = "center";
+        ctx.textAlign = "right";
         ctx.textBaseline = "middle";
-        ctx.fillText("Hand 1", -275, -h/3 + 270);
-        ctx.fillText("Hand 2", -275, -h/3 + 390);
+        ctx.fillText("Hand 1", -235, -h/3 + 270);
+        ctx.fillText("Hand 2", -235, -h/3 + 390);
+        ctx.fillText("Dealer Hand", -235, -h/3 + 510);
         ctx.fillStyle = "#DEB887";
         ctx.fillRect(-210,-h/3+225,425,110);
         ctx.fillRect(-210,-h/3+345,425,110);
+        ctx.fillRect(-210,-h/3+465,425,110);
         for (let index = 0; index < cards.length; index++) {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(cards[index].image, -205+70 * index, -h/3 + 230, 65, 100);
@@ -156,13 +158,14 @@ window.addEventListener("load", () =>{
         }
         for (let index = 0; index < dealerCards.length; index++) {
             ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(dealerCards[index].image, 220+70* index, -h/3 + 290, 65, 100);
+            ctx.drawImage(dealerCards[index].image, -205+70 * index, -h/3 + 470, 65, 100);
         }
     }
 
     function loginScreen(){
-        console.log("e6974be75995c317b182ff6e7b33058e7ba3328354305040a075d544db240886")
-        console.log("5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e")
+        console.log("e6974be75995c317b182ff6e7b33058e7ba3328354305040a075d544db240886");
+        console.log("5275f72548b49081aab8b9f71dfca866247dddefb706f4cfa751284d5221027e");
+        console.log("2d85d928177456a12b6564864920e5ff672b262496477b7406659a3d418e5a2c");
         input = new CanvasInput({
             canvas: document.getElementById("canvas"),
             x: -265,
@@ -197,7 +200,6 @@ window.addEventListener("load", () =>{
         });
 
         /*joinButton =*/ addButton(-210, 40, 200, 75, "#4CAF50","white","Join Game", () => {
-            alert('Button was clicked!');
             //arrRemove(buttons, joinButton);
             //arrRemove(buttons, createButton);
             buttons = [];
@@ -207,7 +209,6 @@ window.addEventListener("load", () =>{
 
     function makeBackButton (x,y) {
         /*testButton =*/ addButton(x, y, 200, 75, "#4CAF50","white","Back",() => {
-            alert('Going back...');
             buttons = [];
             drawer.length = 2;
             //arrRemove(buttons, testButton);
@@ -256,12 +257,14 @@ window.addEventListener("load", () =>{
     async function closeGameScreen() {
         await startTimer(contract,acc.address); // Tester code
         await timeBurn(contract,acc.address); //Tester code
-        addButton(80, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
+        addButton(-100, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
             await contract.methods.playerCount().call().then(alert); //Replace with event listener
         });
-        addButton(80, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
+        addButton(-100, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
             await automateRand(contract,acc.address,()=>{});
-            await closeGame(contract,acc.address,10); //Make dynamic later
+            let pb = await possibleLoss(contract);
+            console.log(pb);
+            await closeGame(contract,acc.address,pb); //Make dynamic later
             buttons = [];
             dealerGameScreen();
         });
@@ -271,7 +274,9 @@ window.addEventListener("load", () =>{
     function dealerGameScreen() {
         addButton(-100, 200, 200, 75,"#4CAF50","white","Proceed", async () => {
             await finalRandProcess(contract,acc.address);
+            buttons = [];
             drawer.pop();
+            dealerFinishedScreen();
         });
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
@@ -279,6 +284,25 @@ window.addEventListener("load", () =>{
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("Please wait while the players make their moves", 0, -h/3 + 95);
+        });
+    }
+
+    function dealerFinishedScreen() {
+        addButton(-100, 40, 200, 75, "#4CAF50","white","New Game",async () => {
+            await contract.methods.showCards().call({from: acc.address}).then(console.log);
+            drawer.length = 2;
+            buttons = [];
+            newGame(contract,acc.address);
+            closeGameScreen();
+        });
+        addButton(-100, 125, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
+            await withdraw(contract,acc.address,100);
+            await contract.methods.showCards().call({from: acc.address}).then(console.log);
+            await removeOne(contract);
+            drawer.length = 2;
+            buttons = [];
+            contract = null;
+            menuScreen();
         });
     }
 
@@ -350,7 +374,10 @@ window.addEventListener("load", () =>{
 
     async function awaitGameStartScreen () {
         await automateRand(contract,acc.address, async ()=>{
-            await submitDeposit(contract, acc.address, 10);//Make dynamic later
+            let pb = await possibleLoss;
+            console.log(pb);
+            console.log(pb*2);
+            await submitDeposit(contract, acc.address, (pb*2))//Make dynamic later
             await makeEventListener(contract, 4, () =>{
                 drawer.pop();
                 playerGameScreen();
@@ -366,10 +393,12 @@ window.addEventListener("load", () =>{
     }
 
     async function playerGameScreen() {
+
         drawer.push(drawCards);
         let cardCount;
         let splitCardCount;
         let standing = false;
+
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
             await hit(contract, acc.address);
             let cardVals = await returnCards(contract,acc.address,false);
@@ -422,7 +451,7 @@ window.addEventListener("load", () =>{
             splitCardCount = 1;
         });
 
-        //Load in cards
+        //Load in player cards
         let cardVals = await returnCards(contract,acc.address,false);
         cardCount = 2;
         splitCardCount = 0
@@ -433,12 +462,49 @@ window.addEventListener("load", () =>{
             }
             image.src = '/'+cardVals[i]+'.png';
         }
+
+        //Load in dealer cards
         let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
         let image = new Image();
         image.onload = function () {
             addCard(image, dealerCards);
         }
         image.src = '/'+dealerVals[dealerVals.length-1]+'.png';
+
+        //Display final dealer card once game is done
+        await makeEventListener(contract, 5, async () =>{
+            buttons = [];
+            playerFinishedScreen();
+        });
+    }
+
+    async function playerFinishedScreen () {
+        let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
+        for (let i = 1; i < dealerVals.length; i++){
+            let image = new Image();
+            image.onload = function () {
+                addCard(image, dealerCards);
+            }
+            image.src = '/'+dealerVals[i]+'.png';
+        }
+        addButton(-100, 40, 200, 75, "#4CAF50","white","Stay",async () => {
+            cards = [];
+            cards2 = [];
+            dealerCards = [];
+            drawer.length = 2;
+            buttons = [];
+            betScreen();
+        });
+        addButton(-100, 125, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
+            await leave(contract,acc.address);
+            cards = [];
+            cards2 = [];
+            dealerCards = [];
+            drawer.length = 2;
+            buttons = [];
+            contract = null;
+            menuScreen();
+        });
     }
 
     // Draw all elements dynamic to window size
