@@ -2,6 +2,8 @@ pragma solidity 0.5.10;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
+|*| (+) Make "require" warning text format consistent    |*|
+|*| (+) Remove option & function to manually start timer |*|
 |*| (+) Make sure everyone is gone (self destruct)       |*|
 |*| (+) Add timers for VARIOUS phases**                  |*|
 |*| (+) Fix playerCount indexes                          |*|
@@ -213,6 +215,7 @@ contract Blackjack{
         delete randNums;
         state = GameState.Accepting;
         emit StateChange(uint8(state)); //temp
+        startTimer();
     }
 
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
@@ -610,32 +613,37 @@ contract Blackjack{
     }
 
     function withdraw (uint256 _amount) public /*notDealer()*/{
-        if (
+        require (
             !(msg.sender == house ||
             msg.sender == playerNums[1] ||
             msg.sender == playerNums[2] ||
             msg.sender == playerNums[3] ||
             msg.sender == playerNums[4]) ||
-            (state == GameState.Finished)
-            ) {
-            if (_amount < players[msg.sender].pool) {
-                players[msg.sender].pool -= _amount;
-                players[msg.sender].wallet.transfer(_amount);
-            } else {
-                uint256 transferAmount = players[msg.sender].pool; //To prevent exploits in fallback code
-                players[msg.sender].pool = 0;
-                players[msg.sender].wallet.transfer(transferAmount);
-            }
+            state == GameState.Finished ||
+            state == GameState.Accepting,
+            "You can't withdraw now"
+        );
+        players[msg.sender].pool += players[msg.sender].bet;
+        players[msg.sender].bet = 0;
+        possibleLoss -= players[msg.sender].pool;
+        if (_amount < players[msg.sender].pool) {
+            players[msg.sender].pool -= _amount;
+            players[msg.sender].wallet.transfer(_amount);
+        } else {
+            uint256 transferAmount = players[msg.sender].pool; //To prevent exploits in fallback code
+            players[msg.sender].pool = 0;
+            players[msg.sender].wallet.transfer(transferAmount);
         }
     }
 
     function leave () public onlyPlayer() notDealer() {
         require (state == GameState.Finished || state == GameState.Accepting, "You can't leave during the game!");
-        withdraw(players[msg.sender].pool);
+        withdraw(players[msg.sender].pool*2);
         for (uint8 i = 1; i <= 4; i++) {
             if(playerNums[i] == msg.sender) {
                 delete players[playerNums[i]];
                 delete playerNums[i];
+                playerCount--;
             }
         }
     }

@@ -113,16 +113,13 @@ async function makeContract(address,minBet,maxBet) {
 async function newGame(contract,address) {
 	await contract.methods.newGame().send({from: address});
 }
+
 async function joinGame(contract,address,value){
-	await contract.methods.joinGame().send({from: address, value: value * Math.pow(10,18)});
+	await contract.methods.joinGame().send({from: address, value: (value * Math.pow(10,18)).toString(10)});
 }
 
 async function bet(contract,address,value){
 	await contract.methods.bet((value*Math.pow(10,18)).toString(10)).send({from: address});
-}
-
-async function startTimer(contract,address) {
-	await contract.methods.startTimer().send({from: address});
 }
 
 async function timeBurn(contract,address) {
@@ -132,11 +129,11 @@ async function timeBurn(contract,address) {
 } // temp
 
 async function closeGame(contract,address,value) {
-	await contract.methods.closeGame().send({from: address, value: value * Math.pow(10,18)}); 
+	await contract.methods.closeGame().send({from: address, value: (value * Math.pow(10,18)).toString(10)}); 
 }
 
 async function submitDeposit(contract,address,value) {
-	await contract.methods.submitDeposit().send({from: address, value: value * Math.pow(10,18)});
+	await contract.methods.submitDeposit().send({from: address, value: (value * Math.pow(10,18)).toString(10)});
 }
 
 function automateRand(contract,address,depositFunc) {
@@ -183,6 +180,7 @@ function automateRand(contract,address,depositFunc) {
 			listener.unsubscribe();
 		}
 	});
+	return listener;
 }
 
 async function showInitialCards(contract) {
@@ -332,15 +330,19 @@ async function returnCards (contract,address,split) {
 }
 
 async function returnOwnerAddress (contract) {
+	let addr;
 	await contract.methods.house().call().then((res)=>{
-		return res;
+		addr = res;
 	});
+	return addr;
 }
 
 async function possibleLoss (contract) {
+	let pb;
 	await contract.methods.possibleLoss().call().then((res)=>{
-		return res;
+		pb = res/Math.pow(10,18);
 	})
+	return pb;
 }
 
 async function removeOne(contract) {
@@ -352,17 +354,6 @@ async function removeOne(contract) {
 		console.log(body);
 	})
 }
-
-async function removeAll() {
-	await request({
-		url: 'http://localhost:3000/games/',
-		method: 'DELETE'
-	  }, (err, res, body) => {
-		if (err) { return console.log(err); }
-		console.log(body);
-	})
-} //Temp
-
 
 function makeEventListener(contract, eventNum, func) {
 	let singleListener;
@@ -389,7 +380,6 @@ window.makeContract = makeContract;
 window.newGame = newGame;
 window.joinGame = joinGame;
 window.bet = bet;
-window.startTimer = startTimer;
 window.timeBurn = timeBurn;
 window.closeGame = closeGame;
 window.submitDeposit = submitDeposit;

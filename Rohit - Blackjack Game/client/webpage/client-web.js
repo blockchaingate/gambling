@@ -255,16 +255,17 @@ window.addEventListener("load", () =>{
     }
 
     async function closeGameScreen() {
-        await startTimer(contract,acc.address); // Tester code
         await timeBurn(contract,acc.address); //Tester code
         addButton(-100, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
             await contract.methods.playerCount().call().then(alert); //Replace with event listener
         });
         addButton(-100, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
+            let deposit = await possibleLoss(contract);
+            if (deposit != 0) {
+                alert("The game will now take "+deposit+ " ether as a deposit. You will get your money back if you follow the rules.");
+            }
             await automateRand(contract,acc.address,()=>{});
-            let pb = await possibleLoss(contract);
-            console.log(pb);
-            await closeGame(contract,acc.address,pb); //Make dynamic later
+            await closeGame(contract,acc.address,deposit);
             buttons = [];
             dealerGameScreen();
         });
@@ -356,11 +357,23 @@ window.addEventListener("load", () =>{
             width: 480,
             onsubmit: async ()=> {
                 await bet(contract,acc.address,input.value());
+                buttons = [];
                 input.destroy();
                 drawer.pop();
                 awaitGameStartScreen();
             }
             
+        });
+        addButton(-100, 175, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
+            input.destroy();
+            await leave(contract,acc.address);
+            cards = [];
+            cards2 = [];
+            dealerCards = [];
+            drawer.length = 2;
+            buttons = [];
+            contract = null;
+            menuScreen();
         });
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
@@ -373,15 +386,25 @@ window.addEventListener("load", () =>{
     }
 
     async function awaitGameStartScreen () {
-        await automateRand(contract,acc.address, async ()=>{
-            let pb = await possibleLoss;
-            console.log(pb);
-            console.log(pb*2);
-            await submitDeposit(contract, acc.address, (pb*2))//Make dynamic later
+        listener = await automateRand(contract,acc.address, async ()=>{
+            alert("The game will now take "+await possibleLoss(contract)*2+ " ether as a deposit. You will get your money back if you follow the rules.");
+            await submitDeposit(contract, acc.address, await possibleLoss(contract)*2);
             await makeEventListener(contract, 4, () =>{
+                buttons = [];
                 drawer.pop();
                 playerGameScreen();
             });
+        });
+        addButton(-100, 135, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
+            listener.unsubscribe();
+            await leave(contract,acc.address);
+            cards = [];
+            cards2 = [];
+            dealerCards = [];
+            drawer.length = 2;
+            buttons = [];
+            contract = null;
+            menuScreen();
         });
         drawer.push(()=>{
             ctx.font = "40px Balthazar";
@@ -471,7 +494,7 @@ window.addEventListener("load", () =>{
         }
         image.src = '/'+dealerVals[dealerVals.length-1]+'.png';
 
-        //Display final dealer card once game is done
+        //Display final dealer cards once game is done
         await makeEventListener(contract, 5, async () =>{
             buttons = [];
             playerFinishedScreen();
@@ -480,14 +503,7 @@ window.addEventListener("load", () =>{
 
     async function playerFinishedScreen () {
         let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
-        for (let i = 1; i < dealerVals.length; i++){
-            let image = new Image();
-            image.onload = function () {
-                addCard(image, dealerCards);
-            }
-            image.src = '/'+dealerVals[i]+'.png';
-        }
-        addButton(-100, 40, 200, 75, "#4CAF50","white","Stay",async () => {
+        await addButton(-100, 40, 200, 75, "#4CAF50","white","Stay",async () => {
             cards = [];
             cards2 = [];
             dealerCards = [];
@@ -495,7 +511,7 @@ window.addEventListener("load", () =>{
             buttons = [];
             betScreen();
         });
-        addButton(-100, 125, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
+        await addButton(-100, 125, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
             await leave(contract,acc.address);
             cards = [];
             cards2 = [];
@@ -505,6 +521,15 @@ window.addEventListener("load", () =>{
             contract = null;
             menuScreen();
         });
+        for (let i = 1; i < dealerVals.length; i++){
+            await setTimeout(()=>{
+                let image = new Image();
+                image.onload = function () {
+                    addCard(image, dealerCards);
+                }
+                image.src = '/'+dealerVals[i]+'.png';
+            },i*2000);
+        }
     }
 
     // Draw all elements dynamic to window size
