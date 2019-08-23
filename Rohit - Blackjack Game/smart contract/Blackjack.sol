@@ -8,7 +8,7 @@ pragma solidity 0.5.10;
 |*| (+) Add timers for VARIOUS phases**                  |*|
 |*| (+) Fix playerCount indexes                          |*|
 |*| (+) Add tons of error trapping                       |*|
-|*|     (such as int overflowand underflow)              |*|
+|*|     (such as int overflow and underflow              |*|
 |*| (+) Change if statements to require                  |*|
 |*| (+) Delete temp functions                            |*|
 |*| (+) Fix function and variable state mutabilities     |*|
@@ -533,24 +533,25 @@ contract Blackjack{
     }
 
     function finalRandProcess() public /*onlyDealer()*/ isInProgress() {
-        if (
+        require (
             (block.number > blockNum + 5) ||
-            ((players[playerNums[1]].bet == 0 || (players[playerNums[1]].done && players[playerNums[1]].splitCards.length != 1)) &&
-            (players[playerNums[2]].bet == 0 || (players[playerNums[2]].done && players[playerNums[2]].splitCards.length != 1)) &&
-            (players[playerNums[3]].bet == 0 || (players[playerNums[3]].done && players[playerNums[3]].splitCards.length != 1)) &&
-            (players[playerNums[4]].bet == 0 || (players[playerNums[4]].done && players[playerNums[4]].splitCards.length != 1)))
-            ) {
-            kick();
-            taskDone = 0;
-            players[house].hashNum = 0;
-            players[house].valid = false;
-            for (uint8 i = 1; i <= playerCount; i++) {
-                players[playerNums[i]].hashNum = 0;
-                players[playerNums[i]].valid = false;
-            }
-            state = GameState.ProcessingRandom;
-            emit StateChange(uint8(state)); //temp
+            (finished(playerNums[1]) && finished(playerNums[2]) && finished(playerNums[3]) && finished(playerNums[4])),
+            "Players still have time to make their moves"
+        );
+        kick();
+        taskDone = 0;
+        players[house].hashNum = 0;
+        players[house].valid = false;
+        for (uint8 i = 1; i <= playerCount; i++) {
+            players[playerNums[i]].hashNum = 0;
+            players[playerNums[i]].valid = false;
         }
+        state = GameState.ProcessingRandom;
+        emit StateChange(uint8(state)); //temp
+    }
+
+    function finished(address _address) private view returns (bool){
+        return players[_address].bet == 0 || (players[_address].done && players[_address].splitCards.length != 1);
     }
 
     function finishGame() private {
@@ -673,6 +674,9 @@ contract Blackjack{
         hashResponse(returnHash(n));
     }
 
+    function done(address _address) public view returns(bool){
+        return players[_address].done;
+    }
 
 //============================================The following functions are for testing purposes only. They will be removed on final build============================================\\
 

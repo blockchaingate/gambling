@@ -1,9 +1,7 @@
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (-) Make api format uniform for HTML JS              |*|
 |*| (-) Organize (such as move makeBackButton() into     |*|
 |*|     screen functions                                 |*|
-|*| (+) Fix temporary event listener callback hell       |*|
 |*|                                                      |*|
 |*|======================================================|*|
 |*|                                                      |*|
@@ -13,25 +11,26 @@
 \*|======================================================|*/
 
 window.addEventListener("load", () =>{
-    
     // Set up canvas
     let canvas = document.getElementById("canvas");
     let ctx = canvas.getContext("2d");
-    
+    let w,h;
+
+    let input;
     let drawer = [];
+
     let buttons = [];
+    //let joinButton, createButton, testButton;
     let cards = [];
     let cards2 = [];
     let dealerCards = [];
-    //let joinButton, createButton, testButton;
-    let w,h;
+    let standing = false;
+    let isDone = false;
 
     let contract;
     let games = [];
     let acc;
-    let privateKey;
-
-    let input;
+    let privateKey;    
 
     // Function to remove an element from an array
     function arrRemove(arr,element) {
@@ -144,10 +143,22 @@ window.addEventListener("load", () =>{
         ctx.fillText("Hand 1", -235, -h/3 + 270);
         ctx.fillText("Hand 2", -235, -h/3 + 390);
         ctx.fillText("Dealer Hand", -235, -h/3 + 510);
-        ctx.fillStyle = "#DEB887";
+
+        if (cards2.length <= 1 && !standing && !isDone) {
+            ctx.fillStyle = "brown";
+        } else {
+            ctx.fillStyle = "#DEB887";
+        }
         ctx.fillRect(-210,-h/3+225,425,110);
+        if ((cards2.length >= 2 || standing) && !isDone) {
+            ctx.fillStyle = "brown";
+        } else {
+            ctx.fillStyle = "#DEB887";
+        }
         ctx.fillRect(-210,-h/3+345,425,110);
+        ctx.fillStyle = "#DEB887";
         ctx.fillRect(-210,-h/3+465,425,110);
+
         for (let index = 0; index < cards.length; index++) {
             ctx.imageSmoothingQuality = "high";
             ctx.drawImage(cards[index].image, -205+70 * index, -h/3 + 230, 65, 100);
@@ -256,8 +267,24 @@ window.addEventListener("load", () =>{
 
     async function closeGameScreen() {
         await timeBurn(contract,acc.address); //Tester code
-        addButton(-100, 40, 200, 75, "#4CAF50","white","Check Lobby Size",async () => {
-            await contract.methods.playerCount().call().then(alert); //Replace with event listener
+        let time = Date.now();
+        
+        async function setLobbySize () { //To run async fuction synchronously
+            lobbySize = await returnLobbySize(contract);
+        }
+        let lobbySize = 0;
+
+        drawer.push(async ()=>{
+            ctx.font = "40px Balthazar";
+            ctx.fillStyle = "#7bff00";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            if (Date.now() - time > 1000) {
+                setLobbySize();
+                time = Date.now();
+            }
+            ctx.fillText("Lobby Size: " + lobbySize, 0, -h/3 + 70 + 25);
+            input.render();
         });
         addButton(-100, 125, 200, 75, "#4CAF50","white","Close Game",async () => {
             let deposit = await possibleLoss(contract);
@@ -266,6 +293,7 @@ window.addEventListener("load", () =>{
             }
             await automateRand(contract,acc.address,()=>{});
             await closeGame(contract,acc.address,deposit);
+            drawer.pop();
             buttons = [];
             dealerGameScreen();
         });
@@ -416,11 +444,9 @@ window.addEventListener("load", () =>{
     }
 
     async function playerGameScreen() {
-
         drawer.push(drawCards);
         let cardCount;
         let splitCardCount;
-        let standing = false;
 
         addButton(-210, 40, 200, 75, "#4CAF50","white","Hit",async () => {
             await hit(contract, acc.address);
@@ -448,12 +474,14 @@ window.addEventListener("load", () =>{
 
                 cardCount = cardVals.length;
                 splitCardCount = splitCardVals.length;
+                isDone = await done(contract,acc.address);
             }
         });
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
             await stand(contract,acc.address);
             standing = true;
             alert("stand");
+            isDone = await done(contract,acc.address);
         });
         addButton(-210, 125, 200, 75, "#4CAF50","white","Double Down",async () => {
             await doubleDown(contract, acc.address);
@@ -466,6 +494,7 @@ window.addEventListener("load", () =>{
                 image.src = '/' + cardVals[cardVals.length-1]+ '.png';
                 cardCount = cardVals.length;
             }
+            isDone = await done(contract,acc.address);
         });
         addButton(10, 125, 200, 75, "#4CAF50","white","Split",async () => {
             await split(contract, acc.address);
@@ -528,7 +557,7 @@ window.addEventListener("load", () =>{
                     addCard(image, dealerCards);
                 }
                 image.src = '/'+dealerVals[i]+'.png';
-            },i*2000);
+            },i*/*2000*/1);
         }
     }
 

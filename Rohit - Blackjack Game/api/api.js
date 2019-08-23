@@ -1,14 +1,3 @@
-
-/*|======================To-do list======================|*\
-|*|                                                      |*|
-|*| (-) Auto create hashs using large random numbers     |*|
-|*|                                                      |*|
-|*|======================================================|*|
-|*|                                                      |*|
-|*| (-) = Current objectives                             |*|
-|*|                                                      |*|
-\*|======================================================|*/
-
 const Web3 = require("web3");
 const bj = require("../smart contract/blackjack.js");
 const request = require('request');
@@ -290,6 +279,14 @@ function getGames() {
 	});
 }
 
+async function returnLobbySize (contract) {
+	let lobbySize;
+	await contract.methods.playerCount().call().then((res)=>{
+		lobbySize = res;
+	});
+	return lobbySize;
+}
+
 async function returnCards (contract,address,split) {
 	let cards = [];
 	if (split) {
@@ -345,6 +342,14 @@ async function possibleLoss (contract) {
 	return pb;
 }
 
+async function done (contract,address) {
+	let doneHand;
+	await contract.methods.done(address).call().then((res)=>{
+		doneHand = res;
+	})
+	return doneHand;
+}
+
 async function removeOne(contract) {
 	await request({
 		url: 'http://localhost:3000/games/'+contract.options.address+'/',
@@ -392,9 +397,11 @@ window.stand = stand;
 window.finalRandProcess = finalRandProcess;
 window.withdraw = withdraw;
 window.leave = leave;
+window.returnLobbySize = returnLobbySize;
 window.returnCards = returnCards;
 window.returnOwnerAddress = returnOwnerAddress;
 window.possibleLoss = possibleLoss;
+window.done = done;
 
 // Export HTML request methods
 window.getGames = getGames;
