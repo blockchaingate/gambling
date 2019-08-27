@@ -10,7 +10,7 @@ web3.eth.defaultGasPrice = 1;
 web3.eth.defaultGas = 6721975;
 
 let cBlackjack = bj.con["contracts"]["Blackjack.sol:Blackjack"];
-let Blackjack = new web3.eth.Contract(JSON.parse(cBlackjack.abi),{ gasLimit:6721975, gasPrice: 1 }); //Remove options for older Web3 version
+let Blackjack = new web3.eth.Contract(JSON.parse(cBlackjack.abi),{ gasLimit:6721975, gasPrice: 1}); //Remove options for older Web3 version
 Blackjack.options.data = "0x" + cBlackjack.bin;
 
 let acc = [];
@@ -30,13 +30,13 @@ const client3Key = acc[3].address;
 const client4Key = acc[4].address;
 
 //console.time("Time taken");
-async function runGame() {
+async function runGame() { //No longer works
 	let contract = await makeContract(ownerKey,1,10);
 	await joinGame(contract,client1Key,2);
 	await bet(contract,client1Key,1);
 	await joinGame(contract,client2Key,2);
 	await bet(contract,client2Key,1);
-	await startTimer(contract,ownerKey);
+	//await startTimer(contract,ownerKey);
 	await timeBurn(contract,ownerKey);
 	/*await contract.methods.players(client1Key).call()
 		.then(console.log)*/;
@@ -52,12 +52,12 @@ async function runGame() {
 		.then(console.log)*/;
 	await timeBurn(contract,ownerKey); //To show cards
 	await showInitialCards(contract);
-	await split(contract, client1Key);
-	await hit(contract, client1Key);
+	//await split(contract, client1Key);
+	//await hit(contract, client1Key);
 	await stand(contract, client1Key);
-	await hit(contract, client1Key);
-	await stand(contract, client1Key);
-	await hit(contract, client2Key);
+	//await hit(contract, client1Key);
+	//await stand(contract, client1Key);
+	//await hit(contract, client2Key);
 	await stand(contract,client2Key);
 	await finalRandProcess(contract, ownerKey);
 	//await contract.methods.returnDeposit().call({from: client1Key}).then(console.log);
@@ -415,7 +415,7 @@ window.removeOne = removeOne;
 //runGame();
 //makeEventListener(contract);
 
-//=====================================================================================Temp code=====================================================================================\\
+//======================================================================Temp code=======================================================================\\
 /*function count(n) {
 	console.log(n++); 
 	if (n < 30){

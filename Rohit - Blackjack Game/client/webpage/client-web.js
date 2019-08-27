@@ -232,13 +232,15 @@ window.addEventListener("load", () =>{
             canvas: document.getElementById("canvas"),
             x: -280,
             y: 125,
-            width: 280     
+            width: 280,
+            onsubmit: submit     
         });
         input2 = new CanvasInput({
             canvas: document.getElementById("canvas"),
             x: -280,
             y: 225,
-            width: 280            
+            width: 280,
+            onsubmit: submit
         });
 
         drawer.push(()=>{
@@ -252,7 +254,8 @@ window.addEventListener("load", () =>{
             input2.render();
         });
         makeBackButton(80, 175);
-        addButton(80, 80, 200, 75, "#4CAF50","white","Submit",async () => {
+        addButton(80, 80, 200, 75, "#4CAF50","white","Submit",submit);
+        async function submit() {
             contract = await makeContract(acc.address,input.value(),input2.value());
             alert('Game Created!');
             //arrRemove(buttons, joinButton);
@@ -262,7 +265,7 @@ window.addEventListener("load", () =>{
             input2.destroy();
             drawer.pop();
             closeGameScreen();
-        })        
+        }
     }
 
     async function closeGameScreen() {
@@ -415,8 +418,12 @@ window.addEventListener("load", () =>{
 
     async function awaitGameStartScreen () {
         listener = await automateRand(contract,acc.address, async ()=>{
-            alert("The game will now take "+await possibleLoss(contract)*2+ " ether as a deposit. You will get your money back if you follow the rules.");
-            await submitDeposit(contract, acc.address, await possibleLoss(contract)*2);
+            let deposit = await possibleLoss(contract);
+            console.log(deposit);
+            if (deposit != 0) {
+                alert("The game will now take "+deposit*2+ " ether as a deposit. You will get your money back if you follow the rules.");
+            }
+            await submitDeposit(contract, acc.address, deposit*2);
             await makeEventListener(contract, 4, () =>{
                 buttons = [];
                 drawer.pop();
@@ -480,7 +487,6 @@ window.addEventListener("load", () =>{
         addButton(10, 40, 200, 75, "#4CAF50","white","Stand",async () => {
             await stand(contract,acc.address);
             standing = true;
-            alert("stand");
             isDone = await done(contract,acc.address);
         });
         addButton(-210, 125, 200, 75, "#4CAF50","white","Double Down",async () => {
@@ -531,11 +537,12 @@ window.addEventListener("load", () =>{
     }
 
     async function playerFinishedScreen () {
-        let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
         await addButton(-100, 40, 200, 75, "#4CAF50","white","Stay",async () => {
             cards = [];
             cards2 = [];
             dealerCards = [];
+            standing = false;
+            isDone = false;
             drawer.length = 2;
             buttons = [];
             betScreen();
@@ -545,11 +552,14 @@ window.addEventListener("load", () =>{
             cards = [];
             cards2 = [];
             dealerCards = [];
+            standing = false;
+            isDone = false;
             drawer.length = 2;
             buttons = [];
             contract = null;
             menuScreen();
         });
+        let dealerVals = await returnCards(contract,await returnOwnerAddress(contract),false);
         for (let i = 1; i < dealerVals.length; i++){
             await setTimeout(()=>{
                 let image = new Image();
