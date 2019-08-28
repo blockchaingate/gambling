@@ -1,15 +1,3 @@
-/*|======================To-do list======================|*\
-|*|                                                      |*|
-|*| (-) Organize (such as move makeBackButton() into     |*|
-|*|     screen functions                                 |*|
-|*|                                                      |*|
-|*|======================================================|*|
-|*|                                                      |*|
-|*| (-) = Current objectives                             |*|
-|*| (+) = Will complete after client-side program        |*|
-|*|                                                      |*|
-\*|======================================================|*/
-
 window.addEventListener("load", () =>{
     // Set up canvas
     let canvas = document.getElementById("canvas");

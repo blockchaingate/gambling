@@ -2,25 +2,19 @@ pragma solidity 0.4.24;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (+) Make "require" warning text format consistent    |*|
-|*| (+) Remove option & function to manually start timer |*|
-|*| (+) Make sure everyone is gone (self destruct)       |*|
-|*| (+) Add timers for VARIOUS phases**                  |*|
-|*| (+) Fix playerCount indexes                          |*|
-|*| (+) Add tons of error trapping                       |*|
-|*|     (such as int overflow and underflow              |*|
-|*| (+) Change if statements to require                  |*|
-|*| (+) Delete temp functions                            |*|
-|*| (+) Fix function and variable state mutabilities     |*|
-|*| (+) Clean up code and code order                     |*|
-|*| (+) Clean up require && statements                   |*|
-|*| (+) Move some require statements to modifiers        |*|
-|*| (+) Change blockNum + 5 to a more reasonable value   |*|
+|*| (+) Implement self-destruct function                 |*|
+|*| (+) Add timers for various phases                    |*|
+|*| (+) Add error trapping for issues such as            |*|
+|*|     int overflow and underflow                       |*|
+|*| (+) Explicitly include function and variable state   |*|
+|*|      mutabilities                                    |*|
+|*| (#) Delete temp functions                            |*|
+|*| (#) Change blockNum + 5 to an appropriate value      |*|
 |*|                                                      |*|
-|*|======================================================|*|
+|*| ==================================================== |*|
 |*|                                                      |*|
 |*| (-) = Current objectives                             |*|
-|*| (+) = Will complete after client-side program        |*|
+|*| (#) = Will complete after kanban deploy              |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -51,23 +45,22 @@ contract Blackjack{
     }
 
     GameState state;
-    uint256 minBet;
-    uint256 maxBet;
-    uint256 blockNum;
-    bool timerStarted;
+    uint256 private minBet;
+    uint256 private maxBet;
+    uint256 private blockNum;
     mapping(address => Player) public players;
     mapping(uint256 => address) public playerNums;
     uint256 public playerCount;
     uint256 public possibleLoss;
-    uint256 taskDone;
+    uint256 private taskDone;
     address public house;
     uint256 public globalRand;
-    address[] target;
-    uint256[4] hashNums;
-    uint256[4] randNums;
+    address[] private target;
+    uint256[4] private hashNums;
+    uint256[4] private randNums;
 
     constructor(uint256 _minBet, uint256 _maxBet) public {
-        require (_maxBet >= 1 ether && _maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid bet params");
+        require (_maxBet >= 1 ether && _maxBet < msg.sender.balance / 2 - 5 ether && _minBet <= _maxBet, "Invalid min or max bet.");
         minBet = _minBet;
         maxBet = _maxBet;
         house = msg.sender;
@@ -127,6 +120,7 @@ contract Blackjack{
         _;
     }
 
+    // Resets the validity check for all players
     function resetValid() private {
         players[house].valid = false;
         for (uint256 i = 1; i <= playerCount; i++) {
@@ -134,12 +128,7 @@ contract Blackjack{
         }
     }
 
-    function startTimer() public onlyDealer() isAccepting() {
-        require(!timerStarted, "You can only start the timer once.");
-        timerStarted = true;
-        blockNum = block.number;
-    }
-
+    // Forces execution to continue if players or dealers are taking too long
     function proceed() public {
         require(
             state == GameState.ProcessingRandom || state == GameState.VerifyingRandom,
@@ -151,6 +140,7 @@ contract Blackjack{
         emit StateChange(uint256(state));
     }
 
+    // Removes any invalid player
     function kick() private {
         uint256 distributableMoney;
         taskDone = playerCount + 1;
@@ -182,6 +172,7 @@ contract Blackjack{
         }
     }
 
+    // Creates a new game by resetting all necessary values
     function newGame() public onlyDealer() isFinished(){
         delete players[house].cards;
         delete players[house].splitCards;
@@ -205,7 +196,6 @@ contract Blackjack{
             players[playerNums[i]].done = false;
             players[playerNums[i]].randState = RandProcessState.AwaitingHashRequest;
         }
-        timerStarted = false;
         playerCount = 0;
         for (uint256 ii = 1; ii <= 4; ii++) {
             if (players[playerNums[ii]].pool != 0) {
@@ -220,11 +210,12 @@ contract Blackjack{
         delete randNums;
         state = GameState.Accepting;
         emit StateChange(uint256(state)); //temp
-        startTimer();
+        blockNum = block.number;
     }
 
+    // Allows players to join the game
     function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
-        require(msg.value >= minBet * 2,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size)");
+        require(msg.value >= minBet * 2,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size).");
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
         playerCount++;
@@ -237,6 +228,7 @@ contract Blackjack{
         players[msg.sender].pool = msg.value;
     }
 
+    // Allows players submit a bet
     function bet(uint256 _bet) public onlyPlayer() notDealer() isAccepting() {
         require(
             (_bet >= minBet) &&
@@ -258,10 +250,10 @@ contract Blackjack{
         players[msg.sender].valid = true;
     }
 
+    // Close the lobby and start the necessary preperation stages
     function closeGame() public payable onlyDealer() isAccepting() {
         require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
         require(playerCount >= 1, "Wait until there's atleast one other player!");
-        require(timerStarted, "You haven't started the timer yet!");
         require (block.number > blockNum + 5 || taskDone == playerCount, "Players still have time to make a move.");
         kick();
         players[house].pool += msg.value;
@@ -272,15 +264,17 @@ contract Blackjack{
         emit StateChange(uint256(state));
     }
 
+    // Submit a deposit that is taken if user cheats
     function submitDeposit() public payable onlyPlayer() notDealer() isProcessingRandom() {
-        require(msg.value >= possibleLoss * 2, "Your deposit needs to match the bets made");
+        require(msg.value >= possibleLoss * 2, "Your deposit needs to match the bets made.");
         require(players[msg.sender].deposit == 0, "You already made a deposit");
         players[msg.sender].deposit = msg.value;
     }
 
+    // Submit the user's number and address hashed
     function submitHash(uint256 _hash) public onlyPlayer() isProcessingRandom() {
-        require(msg.sender == house || players[msg.sender].deposit != 0, "You haven't made a deposit yet");
-        require(_hash != 0, "You can't send a hash of 0");
+        require(msg.sender == house || players[msg.sender].deposit != 0, "You haven't made a deposit yet!");
+        require(_hash != 0, "You can't send a hash of 0.");
         if (players[msg.sender].hashNum == 0) {
             taskDone++;
         }
@@ -295,6 +289,7 @@ contract Blackjack{
         }
     }
 
+    // Submit the user's number corresponding to their hash
     function submitNumber(uint256 _randNum) public onlyPlayer() isVerifyingRandom() {
         require (
             keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum) && !players[msg.sender].valid,
@@ -309,6 +304,7 @@ contract Blackjack{
         }
     }
 
+    // Eliminate any invalid players and move on to the appropriate game state
     function prepare() public isPreparingGame() {
         if (taskDone != playerCount + 1) {
             kick();
@@ -336,6 +332,7 @@ contract Blackjack{
         }
     }
 
+    // Deal the initial two cards to every player and the inital card to the dealer
     function deal() private {
         globalRand = addCard(globalRand, house);
         for (uint256 i = 1; i <= playerCount; i++){
@@ -350,12 +347,14 @@ contract Blackjack{
         blockNum = block.number;
     }
 
+    // Add a card to a hand, increase the card total of that hand, and then modify the random seed for the next use
     function addCard(uint256 _randNum, address _address) private returns (uint256 remainder) {
         players[_address].cards.push(uint256 (_randNum % 52 + 1));
         players[_address].cardSum += cardVal (uint256 (_randNum % 52 + 1), _address);
         remainder = _randNum / 52;
     }
 
+    // Return the value of the card
     function cardVal(uint256 _num,address _address) private returns (uint256 val){
         val = _num % 13;
         if (val >= 10 || val == 0) {
@@ -367,6 +366,7 @@ contract Blackjack{
         }
     }
 
+    // Calculate hand total and see if the user is finished
     function evaluateHand(address _address) private {
         if (players[_address].cardSum == 21) {
             if (players[_address].cards.length == 2 && !players[_address].split) {
@@ -387,20 +387,20 @@ contract Blackjack{
         }
     }
 
+    // Player submits a hash of their number and address
     function hashRequest(uint256 _hash) public onlyPlayer() notDealer() isInProgress() {
-        if (players[msg.sender].randState == RandProcessState.AwaitingHashRequest){
-            players[msg.sender].hashNum = _hash;
-            players[msg.sender].randState = RandProcessState.AwaitingHashResponse;
-            target.push(msg.sender);
-            players[msg.sender].valid = true;
-            players[house].valid = false;
-            blockNum = block.number;
-            emit StateChange(uint256(players[msg.sender].randState) + 6); //temp
-        }
+        require (players[msg.sender].randState == RandProcessState.AwaitingHashRequest, "You can't submit a hash right now!");
+        players[msg.sender].hashNum = _hash;
+        players[msg.sender].randState = RandProcessState.AwaitingHashResponse;
+        target.push(msg.sender);
+        players[msg.sender].valid = true;
+        players[house].valid = false;
+        blockNum = block.number;
+        emit StateChange(uint256(players[msg.sender].randState) + 6); //temp
     }
 
+    // Dealer submits a hash of their number and address
     function hashResponse(uint256 _hash) public onlyDealer() isInProgress() {
-        //if (players[target[_index]].randState == RandProcessState.AwaitingHashResponse) {
         for(uint i = 0; i < target.length; i++) {
             if (players[target[i]].randState == RandProcessState.AwaitingHashResponse){
                 hashNums[i] = _hash;
@@ -413,23 +413,24 @@ contract Blackjack{
                 emit StateChange(uint256(players[target[i]].randState) + 6);
             }
         }
-        //}
     }
 
+    // Player submits a number corresponding to their hash
     function numRequest(uint256 _randNum) public onlyPlayer() notDealer() isInProgress() { //Add error trapping
-        if (
+        require(
             players[msg.sender].randState == RandProcessState.AwaitingNumRequest &&
-            keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum)
-            ) {
-            players[msg.sender].randNum = _randNum;
-            players[msg.sender].randState = RandProcessState.AwaitingNumResponse;
-            players[msg.sender].valid = true;
-            players[house].valid = false;
-            blockNum = block.number;
-            emit StateChange(uint256(players[msg.sender].randState) + 6);
-        }
+            keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum),
+            "You can't submit a number right now!"
+        );
+        players[msg.sender].randNum = _randNum;
+        players[msg.sender].randState = RandProcessState.AwaitingNumResponse;
+        players[msg.sender].valid = true;
+        players[house].valid = false;
+        blockNum = block.number;
+        emit StateChange(uint256(players[msg.sender].randState) + 6);
     }
 
+    // Dealer submits a number corresponding to their hash
     function numResponse(uint256 _randNum) public onlyDealer() isInProgress() { //Add error trapping
         for (uint i = 0; i < target.length; i++){
             if (
@@ -449,8 +450,9 @@ contract Blackjack{
         }
     }
 
+    // Add another card to the player hand if able to
     function hit() public onlyPlayer() notDealer() isInProgress() {
-        require(verifyHit() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid hit");
+        require(verifyHit() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid hit.");
         players[msg.sender].randState = RandProcessState.AwaitingHashRequest;
         for (uint256 i = 0; i < target.length; i++) {
             if (target[i] == msg.sender) {
@@ -467,16 +469,18 @@ contract Blackjack{
         emit StateChange(uint256(players[msg.sender].randState) + 6); //temp
     }
 
+    // Returns true If user is allowed to use the hit command, false otherwise
     function verifyHit() public view isInProgress() returns(bool verified){
         verified = !players[msg.sender].done;
     }
 
+    // Signal that user is done working with the current hand if able to
     function stand() public onlyPlayer() notDealer() isInProgress() {
         require(
             !players[msg.sender].done &&
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
             players[msg.sender].cards.length >= 2,
-            "Invalid stand"
+            "Invalid stand."
         );
         players[msg.sender].done = true;
         players[msg.sender].valid = true;
@@ -484,6 +488,7 @@ contract Blackjack{
         blockNum = block.number;
     }
 
+    // If card total is 9,10 or 11, double bet, hit and "stand" if able to
     function doubleDown() public onlyPlayer() notDealer() isInProgress(){
         require(verifyDoubleDown() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid double down.");
         hit();
@@ -494,6 +499,7 @@ contract Blackjack{
         blockNum = block.number;
     }
 
+    // Returns true if the user is allowed to double down, false otherwise
     function verifyDoubleDown() public view isInProgress() returns(bool verified){
         verified = verifyHit() &&
                    players[msg.sender].cardSum >= 9 &&
@@ -502,13 +508,14 @@ contract Blackjack{
                    !players[msg.sender].split;
     }
 
+    // If initial two cards are duplicate, split them into two hands if able to
     function split() public onlyPlayer() notDealer() isInProgress() {
         require(
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
             players[msg.sender].cards.length == 2 &&
             !players[msg.sender].split &&
             players[msg.sender].cards[0] % 13 == players[msg.sender].cards[1] % 13,
-            "You can't split now"
+            "Invalid split."
         );
         players[msg.sender].pool -= players[msg.sender].bet; //Bet not incremented since it is used twice for payout
         players[msg.sender].splitCards.push(players[msg.sender].cards[1]);
@@ -519,6 +526,7 @@ contract Blackjack{
         blockNum = block.number;
     }
 
+    // If the player still has a split hand and is allowed to work on it, move to that hand
     function transferToSplit() private {
         if (players[msg.sender].done && players[msg.sender].split && players[msg.sender].splitCards.length == 1) {
             players[msg.sender].splitCards = players[msg.sender].cards;
@@ -533,13 +541,20 @@ contract Blackjack{
         }
     }
 
+    // Resets the values needed to redo the random number generation process
     function finalRandProcess() public isInProgress() {
+
+        // Only if out of time or everyone is done
         require (
             (block.number > blockNum + 5) ||
             (finished(playerNums[1]) && finished(playerNums[2]) && finished(playerNums[3]) && finished(playerNums[4])),
-            "Players still have time to make their moves"
+            "Players still have time to make their moves!"
         );
+
+        // Remove invalid players
         kick();
+
+        // Reset necessary values to randomize a number again
         taskDone = 0;
         players[house].hashNum = 0;
         players[house].valid = false;
@@ -551,10 +566,12 @@ contract Blackjack{
         emit StateChange(uint256(state)); //temp
     }
 
+    // Returns true if player is done the game, false otherwise
     function finished(address _address) private view returns (bool){
         return players[_address].bet == 0 || (players[_address].done && players[_address].splitCards.length != 1);
     }
 
+    // Add appropriate amount of cards to dealer hand and pay players accordingly
     function finishGame() private {
         revealDealerCards();
         for (uint256 i = 1; i <= playerCount; i++) {
@@ -572,6 +589,7 @@ contract Blackjack{
         emit StateChange(uint256(state)); //temp
     }
 
+    // Add appropriate amount of cards to dealer hand
     function revealDealerCards() private {
         while (players[house].cardSum < 17) {
             globalRand = addCard(globalRand, house);
@@ -579,14 +597,14 @@ contract Blackjack{
         }
     }
 
+    // Sets user win values based on each hand
     function payOut(address _address, uint256 _cardSum) private {
         if (_cardSum > 21) {
             players[house].pool += players[_address].bet;
         }
         else {
-            if (_cardSum == players[house].cardSum)
-            {
-                if (players[_address].blackjack){
+            if (_cardSum == players[house].cardSum) {
+                if (players[_address].blackjack) {
                     if (players[house].blackjack) {
                         players[_address].pool += players[_address].bet;
                     } else {
@@ -612,7 +630,9 @@ contract Blackjack{
         }
     }
 
-    function withdraw (uint256 _amount) public /*notDealer()*/{
+    // Withdraws all of users money deposited in contract
+    function withdraw (uint256 _amount) public {
+        // If player, game must be done
         require (
             !(msg.sender == house ||
             msg.sender == playerNums[1] ||
@@ -621,11 +641,17 @@ contract Blackjack{
             msg.sender == playerNums[4]) ||
             state == GameState.Finished ||
             state == GameState.Accepting,
-            "You can't withdraw now"
+            "You can't withdraw now."
         );
+
+        // Adds shifts bet to pool - Might not need
         players[msg.sender].pool += players[msg.sender].bet;
         players[msg.sender].bet = 0;
+
+        // Sets possible loss accordingly - Might be incorrect
         possibleLoss -= players[msg.sender].pool;
+
+        // Withdraws appropriate amount
         if (_amount < players[msg.sender].pool) {
             players[msg.sender].pool -= _amount;
             players[msg.sender].wallet.transfer(_amount);
@@ -636,9 +662,14 @@ contract Blackjack{
         }
     }
 
+    // Withdraws and removes player from lobby
     function leave () public onlyPlayer() notDealer() {
         require (state == GameState.Finished || state == GameState.Accepting, "You can't leave during the game!");
+
+        // Make sure all money is withdrawed by setting to 2x total just in case
         withdraw(players[msg.sender].pool*2);
+
+        // Remove player from lobby
         for (uint256 i = 1; i <= 4; i++) {
             if(playerNums[i] == msg.sender) {
                 delete players[playerNums[i]];
@@ -646,33 +677,43 @@ contract Blackjack{
                 playerCount--;
             }
         }
+
     }
 
+    // Implement at a later time - Should allow contract self-destruct after finish
     /*function end () public onlyDealer() {
         require (state == GameState.Finished, "You can't leave during the game!");
         selfdestruct(msg.sender);
     }*/
 
+    // Converts a number and user address into a hash
     function returnHash(uint256 n) public view returns (uint256){
         return uint256(keccak256(abi.encode(n, msg.sender)));
     }
 
+    // Returns user's deposit
     function returnDeposit() public view returns (uint256){
         return players[msg.sender].deposit;
     }
 
+    // WARNING: Next three functions need to be checked to ensure that blockchain cannot see param values
+
+    // Sends a number hashed to corresponding method
     function submitAutoHash(uint256 n) public onlyPlayer() isProcessingRandom(){
         submitHash(returnHash(n));
     }
 
-    function submitAutoHashRequest(uint256 n) public onlyPlayer() isInProgress(){
+    // Sends a number hashed to corresponding method
+    function submitAutoHashRequest(uint256 n) public onlyPlayer() notDealer() isInProgress(){
         hashRequest(returnHash(n));
     }
 
+    // Sends a number hashed to corresponding method
     function submitAutoHashResponse(uint256 n) public onlyPlayer() isInProgress(){
         hashResponse(returnHash(n));
     }
 
+    // Returns true if user has completed their current hand, false otherwise
     function done(address _address) public view returns(bool){
         return players[_address].done;
     }
