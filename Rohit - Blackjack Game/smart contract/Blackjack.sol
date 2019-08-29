@@ -2,19 +2,19 @@ pragma solidity 0.4.24;
 
 /*|======================To-do list======================|*\
 |*|                                                      |*|
-|*| (+) Implement self-destruct function                 |*|
-|*| (+) Add timers for various phases                    |*|
-|*| (+) Add error trapping for issues such as            |*|
+|*| (-) Implement self-destruct function                 |*|
+|*| (-) Add timers for various phases                    |*|
+|*| (-) Add error trapping for issues such as            |*|
 |*|     int overflow and underflow                       |*|
-|*| (+) Explicitly include function and variable state   |*|
+|*| (-) Explicitly include function and variable state   |*|
 |*|      mutabilities                                    |*|
-|*| (#) Delete temp functions                            |*|
-|*| (#) Change blockNum + 5 to an appropriate value      |*|
+|*| (+) Delete temp functions                            |*|
+|*| (+) Change blockNum + 5 to an appropriate value      |*|
 |*|                                                      |*|
 |*| ==================================================== |*|
 |*|                                                      |*|
 |*| (-) = Current objectives                             |*|
-|*| (#) = Will complete after kanban deploy              |*|
+|*| (+) = Will complete after kanban deploy              |*|
 |*|                                                      |*|
 \*|======================================================|*/
 
@@ -253,7 +253,7 @@ contract Blackjack{
     // Close the lobby and start the necessary preperation stages
     function closeGame() public payable onlyDealer() isAccepting() {
         require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
-        require(playerCount >= 1, "Wait until there's atleast one other player!");
+        require(playerCount >= 1, "Please wait until there's atleast one other player.");
         require (block.number > blockNum + 5 || taskDone == playerCount, "Players still have time to make a move.");
         kick();
         players[house].pool += msg.value;
