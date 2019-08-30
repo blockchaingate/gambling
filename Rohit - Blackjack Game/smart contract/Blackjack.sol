@@ -6,8 +6,6 @@ pragma solidity 0.4.24;
 |*| (-) Add timers for various phases                    |*|
 |*| (-) Add error trapping for issues such as            |*|
 |*|     int overflow and underflow                       |*|
-|*| (-) Explicitly include function and variable state   |*|
-|*|      mutabilities                                    |*|
 |*| (+) Delete temp functions                            |*|
 |*| (+) Change blockNum + 5 to an appropriate value      |*|
 |*|                                                      |*|
@@ -129,7 +127,7 @@ contract Blackjack{
     }
 
     // Forces execution to continue if players or dealers are taking too long
-    function proceed() public {
+    function proceed() external {
         require(
             state == GameState.ProcessingRandom || state == GameState.VerifyingRandom,
             "You can't proceed now."
@@ -214,7 +212,7 @@ contract Blackjack{
     }
 
     // Allows players to join the game
-    function joinGame() public payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
+    function joinGame() external payable notDealer() isAccepting() { //Might be able to remove some extra redundant commands
         require(msg.value >= minBet * 2,"Your pool needs to match the min bet requirements (pool must be atleast twice min bet size).");
         require(playerCount < 4, "The max amount of players has been reached! Wait for a new game to start.");
         require(playerNums[1]!=msg.sender && playerNums[2]!=msg.sender && playerNums[3]!=msg.sender, "You already joined.");
@@ -229,7 +227,7 @@ contract Blackjack{
     }
 
     // Allows players submit a bet
-    function bet(uint256 _bet) public onlyPlayer() notDealer() isAccepting() {
+    function bet(uint256 _bet) external onlyPlayer() notDealer() isAccepting() {
         require(
             (_bet >= minBet) &&
             (_bet <= maxBet) &&
@@ -251,7 +249,7 @@ contract Blackjack{
     }
 
     // Close the lobby and start the necessary preperation stages
-    function closeGame() public payable onlyDealer() isAccepting() {
+    function closeGame() external payable onlyDealer() isAccepting() {
         require(players[house].pool + msg.value >= possibleLoss, "You need to send enough funds to match the bets.");
         require(playerCount >= 1, "Please wait until there's atleast one other player.");
         require (block.number > blockNum + 5 || taskDone == playerCount, "Players still have time to make a move.");
@@ -265,7 +263,7 @@ contract Blackjack{
     }
 
     // Submit a deposit that is taken if user cheats
-    function submitDeposit() public payable onlyPlayer() notDealer() isProcessingRandom() {
+    function submitDeposit() external payable onlyPlayer() notDealer() isProcessingRandom() {
         require(msg.value >= possibleLoss * 2, "Your deposit needs to match the bets made.");
         require(players[msg.sender].deposit == 0, "You already made a deposit");
         players[msg.sender].deposit = msg.value;
@@ -290,7 +288,7 @@ contract Blackjack{
     }
 
     // Submit the user's number corresponding to their hash
-    function submitNumber(uint256 _randNum) public onlyPlayer() isVerifyingRandom() {
+    function submitNumber(uint256 _randNum) external onlyPlayer() isVerifyingRandom() {
         require (
             keccak256(abi.encode(_randNum, msg.sender)) == bytes32(players[msg.sender].hashNum) && !players[msg.sender].valid,
             "Your hash does not match your number!"
@@ -475,7 +473,7 @@ contract Blackjack{
     }
 
     // Signal that user is done working with the current hand if able to
-    function stand() public onlyPlayer() notDealer() isInProgress() {
+    function stand() external onlyPlayer() notDealer() isInProgress() {
         require(
             !players[msg.sender].done &&
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
@@ -489,7 +487,7 @@ contract Blackjack{
     }
 
     // If card total is 9,10 or 11, double bet, hit and "stand" if able to
-    function doubleDown() public onlyPlayer() notDealer() isInProgress(){
+    function doubleDown() external onlyPlayer() notDealer() isInProgress(){
         require(verifyDoubleDown() && players[msg.sender].randState == RandProcessState.AwaitingHit, "Invalid double down.");
         hit();
         players[msg.sender].pool -= players[msg.sender].bet;
@@ -509,7 +507,7 @@ contract Blackjack{
     }
 
     // If initial two cards are duplicate, split them into two hands if able to
-    function split() public onlyPlayer() notDealer() isInProgress() {
+    function split() external onlyPlayer() notDealer() isInProgress() {
         require(
             players[msg.sender].randState == RandProcessState.AwaitingHashRequest &&
             players[msg.sender].cards.length == 2 &&
@@ -542,7 +540,7 @@ contract Blackjack{
     }
 
     // Resets the values needed to redo the random number generation process
-    function finalRandProcess() public isInProgress() {
+    function finalRandProcess() external isInProgress() {
 
         // Only if out of time or everyone is done
         require (
@@ -663,7 +661,7 @@ contract Blackjack{
     }
 
     // Withdraws and removes player from lobby
-    function leave () public onlyPlayer() notDealer() {
+    function leave () external onlyPlayer() notDealer() {
         require (state == GameState.Finished || state == GameState.Accepting, "You can't leave during the game!");
 
         // Make sure all money is withdrawed by setting to 2x total just in case
@@ -692,45 +690,45 @@ contract Blackjack{
     }
 
     // Returns user's deposit
-    function returnDeposit() public view returns (uint256){
+    function returnDeposit() external view returns (uint256){
         return players[msg.sender].deposit;
     }
 
     // WARNING: Next three functions need to be checked to ensure that blockchain cannot see param values
 
     // Sends a number hashed to corresponding method
-    function submitAutoHash(uint256 n) public onlyPlayer() isProcessingRandom(){
+    function submitAutoHash(uint256 n) external onlyPlayer() isProcessingRandom(){
         submitHash(returnHash(n));
     }
 
     // Sends a number hashed to corresponding method
-    function submitAutoHashRequest(uint256 n) public onlyPlayer() notDealer() isInProgress(){
+    function submitAutoHashRequest(uint256 n) external onlyPlayer() notDealer() isInProgress(){
         hashRequest(returnHash(n));
     }
 
     // Sends a number hashed to corresponding method
-    function submitAutoHashResponse(uint256 n) public onlyPlayer() isInProgress(){
+    function submitAutoHashResponse(uint256 n) external onlyPlayer() isInProgress(){
         hashResponse(returnHash(n));
     }
 
     // Returns true if user has completed their current hand, false otherwise
-    function done(address _address) public view returns(bool){
+    function done(address _address) external view returns(bool){
         return players[_address].done;
     }
 
 //============================================The following functions are for testing purposes only. They will be removed on final build============================================\\
 
-    function showCards() public view returns (uint256[] memory){
+    function showCards() external view returns (uint256[] memory){
         return players[msg.sender].cards;
     }
 
-    function showSplitCards() public view returns (uint256[] memory){
+    function showSplitCards() external view returns (uint256[] memory){
         return players[msg.sender].splitCards;
     }
 
-    function returnCardSum() public view returns (uint256){
+    function returnCardSum() external view returns (uint256){
         return players[msg.sender].cardSum;
     }
 
-    function doNothing() public pure{}
+    function doNothing() external pure{}
 }

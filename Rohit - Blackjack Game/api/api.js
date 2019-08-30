@@ -47,7 +47,6 @@ async function makeContract(address,minBet,maxBet) {
 		}
 	  }, (err, res, body) => {
 		if (err) { return console.log(err); }
-		console.log(body);
 	  }
 	);
 	newGame(contract,address);
@@ -150,10 +149,11 @@ async function hit(contract,address) {
 	} while (randNum.charAt(0)=='0'); // Put into function	
 	await makeEventListener(contract,10,async()=>{ // Change later to make sure it only responds to user's event
 		await contract.methods.hit().send({from: address});
-		await contract.methods.showCards().call({from: address})
+		//Uncomment following lines to see player cards
+		/*await contract.methods.showCards().call({from: address})
 			.then(console.log);
 		await contract.methods.showSplitCards().call({from: address})
-			.then(console.log);
+			.then(console.log);*/
 	});
 	await makeEventListener(contract,8,async()=>{
 		await contract.methods.numRequest(randNum).send({from: address});		//Randomize
@@ -179,10 +179,11 @@ async function doubleDown(contract,address) {
 	} while (randNum.charAt(0)=='0'); // Put into function	
 	await makeEventListener(contract,10,async()=>{ // Change later to make sure it only responds to user's event
 		await contract.methods.doubleDown().send({from: address});
-		await contract.methods.showCards().call({from: address})
+		//Uncomment following lines to see player cards
+		/*await contract.methods.showCards().call({from: address})
 			.then(console.log);
 		await contract.methods.showSplitCards().call({from: address})
-			.then(console.log);
+			.then(console.log);*/
 	});
 	await makeEventListener(contract,8,async()=>{
 		await contract.methods.numRequest(randNum).send({from: address});		//Randomize
@@ -195,10 +196,11 @@ async function doubleDown(contract,address) {
 // Performs the "split" functionality in blackjack
 async function split(contract,address) {
 	await contract.methods.split().send({from: address});
-	await contract.methods.showCards().call({from: address})
+	//Uncomment following lines to see player cards
+	/*await contract.methods.showCards().call({from: address})
 		.then(console.log);
 	await contract.methods.showSplitCards().call({from: address})
-		.then(console.log);
+		.then(console.log);*/
 } 
 
 // Performs the "stand" functionality in blackjack
@@ -319,7 +321,6 @@ async function removeOne(contract) {
 		method: 'DELETE'
 	  }, (err, res, body) => {
 		if (err) { return console.log(err); }
-		console.log(body);
 	})
 }
 

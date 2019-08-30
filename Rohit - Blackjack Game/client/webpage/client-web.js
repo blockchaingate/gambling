@@ -355,7 +355,8 @@ window.addEventListener("load", () =>{
 
         // Allows the dealer to create a new game
         addButton(-100, 40, 200, 75, "#4CAF50","white","New Game",async () => {
-            await contract.methods.showCards().call({from: acc.address}).then(console.log);
+            //Uncomment following line to see dealer cards
+            //await contract.methods.showCards().call({from: acc.address}).then(console.log);
             drawer.length = 2;
             buttons = [];
             newGame(contract,acc.address);
@@ -365,7 +366,8 @@ window.addEventListener("load", () =>{
         // Allows the dealer to withdraw their funds and leave
         addButton(-100, 125, 200, 75, "#4CAF50","white","Withdraw and Leave",async () => {
             await withdraw(contract,acc.address,100);
-            await contract.methods.showCards().call({from: acc.address}).then(console.log);
+            //Uncomment following line to see dealer cards
+            //await contract.methods.showCards().call({from: acc.address}).then(console.log);
             await removeOne(contract);
             drawer.length = 2;
             buttons = [];
@@ -476,18 +478,16 @@ window.addEventListener("load", () =>{
 
             // Notifies user that a security deposit will be taken and takes the deposit (if one hasnt been made already)
             let deposit = await possibleLoss(contract);
-            console.log(deposit);
             if (deposit != 0) {
                 alert("The game will now take "+deposit*2+ " ether as a deposit. You will get your money back if you follow the rules.");
+                await submitDeposit(contract, acc.address, deposit*2);
+                //Initiates the game screen when appropriate
+                await makeEventListener(contract, 4, () =>{
+                    buttons = [];
+                    drawer.pop();
+                    playerGameScreen();
+                });
             }
-            await submitDeposit(contract, acc.address, deposit*2);
-
-            //Initiates the game screen when appropriate
-            await makeEventListener(contract, 4, () =>{
-                buttons = [];
-                drawer.pop();
-                playerGameScreen();
-            });
         });
 
         // Allows players to withdraw their funds and leave

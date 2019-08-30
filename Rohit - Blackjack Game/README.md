@@ -1,6 +1,6 @@
 # Blackjack DAPP
 
-A blackjack game programmed for the FAB blockchain. Currently running on Ganache Ethreum testnet
+A blackjack game programmed for the FAB blockchain. Currently able to deploy on Ganache's Ethreum testnet
 
 ## Prerequisites
 Requires node.js and npm for installing server
@@ -30,8 +30,14 @@ node server.js
 ```
 In your browser enter **localhost:3000** to open the game
 
-## Contributing
-Please contact rohitkrishna.ca@gmail.com for any questions or concerns
+## Contact
+Please contact rohitkrishna.ca@gmail.com for any questions or concerns or if you would like to contribute.
+
+## Contributions
+For local contributions:
+- If editing the smart contract, to export edits to be seen by api run ` solc --optimize --combined-json abi,asm,ast,bin,bin-runtime,interface,opcodes,srcmap,srcmap-runtime Blackjack.sol > blackjack.json
+` in a Windows terminal in the **smart contract** directory. Then copy all data from the **blackjack.json** file and paste it after the "=" near the beginning of the **blackjack.js** file.
+- To export api edits to the client-side (will have to be done when **blackjack.js** is edited as well) run `browserify api.js -o api-web.js` in a Windows terminal in the **api** directory.
 
 ## License
 [MIT](https://github.com/blockchaingate/gambling/blob/master/LICENSE)
